@@ -20,7 +20,47 @@
         audioContext: null,
         audioChannels: {},
         spritesheets: new Map(),
-        initialized: false
+        initialized: false,
+        
+        // Input system
+        keys: new Set(),
+        gamepads: {},
+        touchControls: null,
+        showMobileControls: true,
+        
+        // Button bit flags
+        BUTTON_UP: 0x01,
+        BUTTON_DOWN: 0x02,
+        BUTTON_LEFT: 0x04,
+        BUTTON_RIGHT: 0x08,
+        BUTTON_A: 0x10,
+        BUTTON_B: 0x20,
+        BUTTON_X: 0x40,
+        BUTTON_Y: 0x80,
+        
+        // Default key mappings for player 0
+        keyMappings: {
+            0: {
+                up: ['ArrowUp', 'KeyW'],
+                down: ['ArrowDown', 'KeyS'],
+                left: ['ArrowLeft', 'KeyA'],
+                right: ['ArrowRight', 'KeyD'],
+                a: ['KeyZ', 'Space'],
+                b: ['KeyX', 'ShiftLeft'],
+                x: ['KeyC', 'KeyN'],
+                y: ['KeyV', 'KeyM']
+            },
+            1: {
+                up: ['KeyI'],
+                down: ['KeyK'],
+                left: ['KeyJ'],
+                right: ['KeyL'],
+                a: ['KeyU'],
+                b: ['KeyO'],
+                x: ['KeyY'],
+                y: ['KeyP']
+            }
+        }
     };
 
     // Initialize the graphics system
@@ -49,6 +89,8 @@
         this.setupWebGL();
         this.setupAudio();
         this.setupSpritesheetComponents();
+        this.setupInput();
+        this.setupMobileControls();
         this.resize();
 
         window.addEventListener('resize', () => this.resize());
@@ -169,6 +211,193 @@
         }
     };
 
+    // Input system setup
+    Fixm.setupInput = function() {
+        // Keyboard events
+        document.addEventListener('keydown', (e) => {
+            this.keys.add(e.code);
+            e.preventDefault();
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            this.keys.delete(e.code);
+            e.preventDefault();
+        });
+        
+        // Prevent context menu on canvas
+        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        // Focus canvas to receive keyboard events
+        this.canvas.tabIndex = 1;
+        this.canvas.focus();
+    };
+
+    // Mobile touch controls setup
+    Fixm.setupMobileControls = function() {
+        if (!this.showMobileControls) return;
+        
+        // Detect if we're on a mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                         ('ontouchstart' in window);
+        
+        if (!isMobile) return;
+        
+        // Create touch controls overlay
+        this.touchControls = document.createElement('div');
+        this.touchControls.id = 'fixm-touch-controls';
+        this.touchControls.innerHTML = `
+            <div class="dpad">
+                <div class="dpad-up" data-button="up">▲</div>
+                <div class="dpad-left" data-button="left">◀</div>
+                <div class="dpad-center"></div>
+                <div class="dpad-right" data-button="right">▶</div>
+                <div class="dpad-down" data-button="down">▼</div>
+            </div>
+            <div class="action-buttons">
+                <div class="btn btn-y" data-button="y">Y</div>
+                <div class="btn btn-x" data-button="x">X</div>
+                <div class="btn btn-b" data-button="b">B</div>
+                <div class="btn btn-a" data-button="a">A</div>
+            </div>
+        `;
+        
+        // Add CSS for touch controls
+        if (!document.getElementById('fixm-touch-styles')) {
+            const style = document.createElement('style');
+            style.id = 'fixm-touch-styles';
+            style.textContent = `
+                #fixm-touch-controls {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    pointer-events: none;
+                    z-index: 1000;
+                    font-family: monospace;
+                    user-select: none;
+                }
+                
+                .dpad, .action-buttons {
+                    position: absolute;
+                    pointer-events: all;
+                }
+                
+                .dpad {
+                    bottom: 20px;
+                    left: 20px;
+                    width: 120px;
+                    height: 120px;
+                    display: grid;
+                    grid-template-columns: 1fr 1fr 1fr;
+                    grid-template-rows: 1fr 1fr 1fr;
+                    gap: 2px;
+                }
+                
+                .dpad > div {
+                    background: rgba(0, 0, 0, 0.3);
+                    border: 2px solid rgba(255, 255, 255, 0.3);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 20px;
+                    border-radius: 8px;
+                    touch-action: none;
+                }
+                
+                .dpad-up { grid-column: 2; grid-row: 1; }
+                .dpad-left { grid-column: 1; grid-row: 2; }
+                .dpad-center { grid-column: 2; grid-row: 2; background: transparent; border: none; }
+                .dpad-right { grid-column: 3; grid-row: 2; }
+                .dpad-down { grid-column: 2; grid-row: 3; }
+                
+                .action-buttons {
+                    bottom: 20px;
+                    right: 20px;
+                    width: 120px;
+                    height: 120px;
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    grid-template-rows: 1fr 1fr;
+                    gap: 8px;
+                }
+                
+                .btn {
+                    background: rgba(0, 0, 0, 0.3);
+                    border: 2px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 16px;
+                    font-weight: bold;
+                    touch-action: none;
+                }
+                
+                .btn-y { grid-column: 1; grid-row: 1; }
+                .btn-x { grid-column: 2; grid-row: 1; }
+                .btn-b { grid-column: 1; grid-row: 2; }
+                .btn-a { grid-column: 2; grid-row: 2; }
+                
+                .dpad > div.active, .btn.active {
+                    background: rgba(255, 255, 255, 0.3);
+                    border-color: rgba(255, 255, 255, 0.8);
+                    transform: scale(0.95);
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(this.touchControls);
+        
+        // Touch event handlers
+        const handleTouch = (e, isDown) => {
+            e.preventDefault();
+            
+            for (let touch of e.touches || [e]) {
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (element && element.dataset.button) {
+                    const button = element.dataset.button;
+                    if (isDown) {
+                        element.classList.add('active');
+                        this.simulateKeyDown(button, 0);
+                    } else {
+                        element.classList.remove('active');
+                        this.simulateKeyUp(button, 0);
+                    }
+                }
+            }
+            
+            // Handle touch end - remove all active states
+            if (!isDown && e.touches.length === 0) {
+                this.touchControls.querySelectorAll('.active').forEach(el => {
+                    el.classList.remove('active');
+                    if (el.dataset.button) {
+                        this.simulateKeyUp(el.dataset.button, 0);
+                    }
+                });
+            }
+        };
+        
+        this.touchControls.addEventListener('touchstart', (e) => handleTouch(e, true));
+        this.touchControls.addEventListener('touchmove', (e) => handleTouch(e, true));
+        this.touchControls.addEventListener('touchend', (e) => handleTouch(e, false));
+        this.touchControls.addEventListener('touchcancel', (e) => handleTouch(e, false));
+    };
+
+    // Simulate key events for touch controls
+    Fixm.simulateKeyDown = function(button, player) {
+        if (!this.gamepads[player]) this.gamepads[player] = 0;
+        this.gamepads[player] |= this['BUTTON_' + button.toUpperCase()];
+    };
+
+    Fixm.simulateKeyUp = function(button, player) {
+        if (!this.gamepads[player]) this.gamepads[player] = 0;
+        this.gamepads[player] &= ~this['BUTTON_' + button.toUpperCase()];
+    };
+
     Fixm.resize = function() {
         const container = this.canvas.parentElement || document.body;
         const containerWidth = container.clientWidth;
@@ -253,6 +482,64 @@
                     this.setPixel(dx + x, dy + y, color);
                 }
             }
+        }
+    };
+
+    // Input functions
+    Fixm.getGamepad = function(player = 0) {
+        // Initialize player gamepad state if not exists
+        if (!this.gamepads[player]) {
+            this.gamepads[player] = 0;
+        }
+        
+        // Get key mappings for this player
+        const mapping = this.keyMappings[player];
+        if (!mapping) return this.gamepads[player]; // Return touch/simulated input only
+        
+        let gamepadState = this.gamepads[player]; // Start with touch controls state
+        
+        // Check keyboard inputs and combine with touch inputs
+        if (mapping.up && mapping.up.some(key => this.keys.has(key))) {
+            gamepadState |= this.BUTTON_UP;
+        }
+        if (mapping.down && mapping.down.some(key => this.keys.has(key))) {
+            gamepadState |= this.BUTTON_DOWN;
+        }
+        if (mapping.left && mapping.left.some(key => this.keys.has(key))) {
+            gamepadState |= this.BUTTON_LEFT;
+        }
+        if (mapping.right && mapping.right.some(key => this.keys.has(key))) {
+            gamepadState |= this.BUTTON_RIGHT;
+        }
+        if (mapping.a && mapping.a.some(key => this.keys.has(key))) {
+            gamepadState |= this.BUTTON_A;
+        }
+        if (mapping.b && mapping.b.some(key => this.keys.has(key))) {
+            gamepadState |= this.BUTTON_B;
+        }
+        if (mapping.x && mapping.x.some(key => this.keys.has(key))) {
+            gamepadState |= this.BUTTON_X;
+        }
+        if (mapping.y && mapping.y.some(key => this.keys.has(key))) {
+            gamepadState |= this.BUTTON_Y;
+        }
+        
+        return gamepadState;
+    };
+
+    // Configure key mappings for a player
+    Fixm.setKeyMapping = function(player, button, keys) {
+        if (!this.keyMappings[player]) {
+            this.keyMappings[player] = {};
+        }
+        this.keyMappings[player][button] = Array.isArray(keys) ? keys : [keys];
+    };
+
+    // Set whether mobile controls should be shown
+    Fixm.setMobileControlsVisible = function(visible) {
+        this.showMobileControls = visible;
+        if (this.touchControls) {
+            this.touchControls.style.display = visible ? 'block' : 'none';
         }
     };
 

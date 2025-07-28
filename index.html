@@ -61,10 +61,13 @@
             <button onclick="drawSprite()">Draw Sprite</button>
             <button onclick="playSound()">Play Sound</button>
             <button onclick="animateDemo()">Animate Demo</button>
+            <button onclick="inputDemo()">Input Demo</button>
             <button onclick="clearScreen()">Clear</button>
         </div>
         
         <p>320x240 internal resolution, scaled to fit screen with pixel-perfect rendering</p>
+        <p>Input: WASD/Arrows + Z/X/C/V or touch controls on mobile</p>
+        <div id="input-display" style="margin: 10px 0; font-family: monospace; color: #ccc;"></div>
     </div>
     
     <script src="fixm.js"></script>
@@ -78,6 +81,7 @@
         
         let animationId;
         let frame = 0;
+        let inputDemoActive = false;
         
         function drawRects() {
             Fixm.clear(0x001122);
@@ -153,11 +157,75 @@
             animate();
         }
         
+        function inputDemo() {
+            if (inputDemoActive) {
+                inputDemoActive = false;
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+                document.getElementById('input-display').textContent = '';
+                return;
+            }
+            
+            inputDemoActive = true;
+            
+            function updateInputDemo() {
+                const gamepad = Fixm.getGamepad(0);
+                
+                // Clear screen
+                Fixm.clear(0x001122);
+                
+                // Draw player square in center
+                let playerX = 150;
+                let playerY = 110;
+                
+                // Move based on input
+                if (gamepad & Fixm.BUTTON_LEFT) playerX -= 2;
+                if (gamepad & Fixm.BUTTON_RIGHT) playerX += 2;
+                if (gamepad & Fixm.BUTTON_UP) playerY -= 2;
+                if (gamepad & Fixm.BUTTON_DOWN) playerY += 2;
+                
+                // Draw player
+                Fixm.drawRect(playerX, playerY, 20, 20, 0xFFFFFF);
+                
+                // Draw button indicators
+                if (gamepad & Fixm.BUTTON_A) Fixm.drawRect(10, 10, 30, 20, 0xFF0000);
+                if (gamepad & Fixm.BUTTON_B) Fixm.drawRect(50, 10, 30, 20, 0x00FF00);
+                if (gamepad & Fixm.BUTTON_X) Fixm.drawRect(90, 10, 30, 20, 0x0000FF);
+                if (gamepad & Fixm.BUTTON_Y) Fixm.drawRect(130, 10, 30, 20, 0xFFFF00);
+                
+                // Display input state
+                const inputState = [];
+                if (gamepad & Fixm.BUTTON_UP) inputState.push('UP');
+                if (gamepad & Fixm.BUTTON_DOWN) inputState.push('DOWN');
+                if (gamepad & Fixm.BUTTON_LEFT) inputState.push('LEFT');
+                if (gamepad & Fixm.BUTTON_RIGHT) inputState.push('RIGHT');
+                if (gamepad & Fixm.BUTTON_A) inputState.push('A');
+                if (gamepad & Fixm.BUTTON_B) inputState.push('B');
+                if (gamepad & Fixm.BUTTON_X) inputState.push('X');
+                if (gamepad & Fixm.BUTTON_Y) inputState.push('Y');
+                
+                document.getElementById('input-display').textContent = 
+                    `Gamepad: 0x${gamepad.toString(16).padStart(2, '0')} | Buttons: ${inputState.join(', ') || 'None'}`;
+                
+                Fixm.present();
+                
+                if (inputDemoActive) {
+                    animationId = requestAnimationFrame(updateInputDemo);
+                }
+            }
+            
+            updateInputDemo();
+        }
+
         function clearScreen() {
             if (animationId) {
                 cancelAnimationFrame(animationId);
                 animationId = null;
             }
+            inputDemoActive = false;
+            document.getElementById('input-display').textContent = '';
             Fixm.clear(0x000000);
             Fixm.present();
         }
@@ -172,12 +240,14 @@
                 case '2': drawSprite(); break;
                 case '3': playSound(); break;
                 case '4': animateDemo(); break;
+                case '5': inputDemo(); break;
                 case ' ': clearScreen(); break;
             }
         });
         
         console.log('Fixm Demo Ready!');
-        console.log('Controls: 1=Rectangles, 2=Sprites, 3=Sound, 4=Animation, Space=Clear');
+        console.log('Controls: 1=Rectangles, 2=Sprites, 3=Sound, 4=Animation, 5=Input, Space=Clear');
+        console.log('Input Demo: Use WASD/Arrows to move, Z/X/C/V for buttons, or touch controls on mobile');
     </script>
 </body>
 </html>
