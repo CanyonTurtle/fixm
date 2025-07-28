@@ -79,11 +79,38 @@
             mode: 'truecolor'
         });
         
-        let animationId;
+        // Game state
+        let currentDemo = 'rects';
         let frame = 0;
-        let inputDemoActive = false;
+        let playerX = 150;
+        let playerY = 110;
         
-        function drawRects() {
+        // Set up the main update loop
+        Fixm.setUpdate((deltaTime) => {
+            frame++;
+            
+            switch(currentDemo) {
+                case 'rects':
+                    updateRects();
+                    break;
+                case 'sprite':
+                    updateSprite();
+                    break;
+                case 'animate':
+                    updateAnimate();
+                    break;
+                case 'input':
+                    updateInput();
+                    break;
+                case 'clear':
+                    updateClear();
+                    break;
+            }
+            
+            Fixm.present();
+        });
+
+        function updateRects() {
             Fixm.clear(0x001122);
             
             // Draw some colorful rectangles
@@ -100,19 +127,89 @@
                     Fixm.setPixel(x, y, color);
                 }
             }
-            
-            Fixm.present();
         }
         
-        function drawSprite() {
+        function updateSprite() {
             Fixm.clear(0x000044);
             
             // Draw the test sprite multiple times
             for (let i = 0; i < 8; i++) {
                 Fixm.blitSub(0, 0, 8, 8, 50 + i * 20, 50 + i * 10, 'test');
             }
+        }
+        
+        function updateAnimate() {
+            // Clear with animated background color
+            const bgColor = Math.floor(Math.sin(frame * 0.02) * 32 + 32);
+            Fixm.clear(bgColor << 16 | bgColor << 8 | bgColor * 2);
             
-            Fixm.present();
+            // Animated rectangles
+            for (let i = 0; i < 5; i++) {
+                const x = Math.sin(frame * 0.03 + i) * 100 + 160;
+                const y = Math.cos(frame * 0.04 + i * 0.5) * 80 + 120;
+                const color = ((frame + i * 50) % 255) << ((i % 3) * 8);
+                Fixm.drawRect(Math.floor(x), Math.floor(y), 20, 20, color);
+            }
+            
+            // Animated sprites
+            const spriteX = Math.sin(frame * 0.05) * 140 + 160;
+            const spriteY = Math.cos(frame * 0.03) * 100 + 120;
+            Fixm.blitSub(0, 0, 8, 8, Math.floor(spriteX), Math.floor(spriteY), 'test');
+        }
+        
+        function updateInput() {
+            const gamepad = Fixm.getGamepad(0);
+            
+            // Move player based on input
+            if (gamepad & Fixm.BUTTON_LEFT) playerX -= 2;
+            if (gamepad & Fixm.BUTTON_RIGHT) playerX += 2;
+            if (gamepad & Fixm.BUTTON_UP) playerY -= 2;
+            if (gamepad & Fixm.BUTTON_DOWN) playerY += 2;
+            
+            // Keep player in bounds
+            playerX = Math.max(0, Math.min(playerX, 300));
+            playerY = Math.max(0, Math.min(playerY, 220));
+            
+            // Clear screen
+            Fixm.clear(0x001122);
+            
+            // Draw player
+            Fixm.drawRect(playerX, playerY, 20, 20, 0xFFFFFF);
+            
+            // Draw button indicators
+            if (gamepad & Fixm.BUTTON_A) Fixm.drawRect(10, 10, 30, 20, 0xFF0000);
+            if (gamepad & Fixm.BUTTON_B) Fixm.drawRect(50, 10, 30, 20, 0x00FF00);
+            if (gamepad & Fixm.BUTTON_X) Fixm.drawRect(90, 10, 30, 20, 0x0000FF);
+            if (gamepad & Fixm.BUTTON_Y) Fixm.drawRect(130, 10, 30, 20, 0xFFFF00);
+            
+            // Display input state
+            const inputState = [];
+            if (gamepad & Fixm.BUTTON_UP) inputState.push('UP');
+            if (gamepad & Fixm.BUTTON_DOWN) inputState.push('DOWN');
+            if (gamepad & Fixm.BUTTON_LEFT) inputState.push('LEFT');
+            if (gamepad & Fixm.BUTTON_RIGHT) inputState.push('RIGHT');
+            if (gamepad & Fixm.BUTTON_A) inputState.push('A');
+            if (gamepad & Fixm.BUTTON_B) inputState.push('B');
+            if (gamepad & Fixm.BUTTON_X) inputState.push('X');
+            if (gamepad & Fixm.BUTTON_Y) inputState.push('Y');
+            
+            document.getElementById('input-display').textContent = 
+                `Gamepad: 0x${gamepad.toString(16).padStart(2, '0')} | Buttons: ${inputState.join(', ') || 'None'}`;
+        }
+        
+        function updateClear() {
+            Fixm.clear(0x000000);
+        }
+
+        // Button functions now just change the demo state
+        function drawRects() {
+            currentDemo = 'rects';
+            document.getElementById('input-display').textContent = '';
+        }
+        
+        function drawSprite() {
+            currentDemo = 'sprite';
+            document.getElementById('input-display').textContent = '';
         }
         
         function playSound() {
@@ -124,110 +221,19 @@
         }
         
         function animateDemo() {
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
-                return;
-            }
-            
-            function animate() {
-                frame++;
-                
-                // Clear with animated background color
-                const bgColor = Math.floor(Math.sin(frame * 0.02) * 32 + 32);
-                Fixm.clear(bgColor << 16 | bgColor << 8 | bgColor * 2);
-                
-                // Animated rectangles
-                for (let i = 0; i < 5; i++) {
-                    const x = Math.sin(frame * 0.03 + i) * 100 + 160;
-                    const y = Math.cos(frame * 0.04 + i * 0.5) * 80 + 120;
-                    const color = ((frame + i * 50) % 255) << ((i % 3) * 8);
-                    Fixm.drawRect(Math.floor(x), Math.floor(y), 20, 20, color);
-                }
-                
-                // Animated sprites
-                const spriteX = Math.sin(frame * 0.05) * 140 + 160;
-                const spriteY = Math.cos(frame * 0.03) * 100 + 120;
-                Fixm.blitSub(0, 0, 8, 8, Math.floor(spriteX), Math.floor(spriteY), 'test');
-                
-                Fixm.present();
-                animationId = requestAnimationFrame(animate);
-            }
-            
-            animate();
+            currentDemo = 'animate';
+            document.getElementById('input-display').textContent = '';
         }
         
         function inputDemo() {
-            if (inputDemoActive) {
-                inputDemoActive = false;
-                if (animationId) {
-                    cancelAnimationFrame(animationId);
-                    animationId = null;
-                }
-                document.getElementById('input-display').textContent = '';
-                return;
-            }
-            
-            inputDemoActive = true;
-            
-            function updateInputDemo() {
-                const gamepad = Fixm.getGamepad(0);
-                
-                // Clear screen
-                Fixm.clear(0x001122);
-                
-                // Draw player square in center
-                let playerX = 150;
-                let playerY = 110;
-                
-                // Move based on input
-                if (gamepad & Fixm.BUTTON_LEFT) playerX -= 2;
-                if (gamepad & Fixm.BUTTON_RIGHT) playerX += 2;
-                if (gamepad & Fixm.BUTTON_UP) playerY -= 2;
-                if (gamepad & Fixm.BUTTON_DOWN) playerY += 2;
-                
-                // Draw player
-                Fixm.drawRect(playerX, playerY, 20, 20, 0xFFFFFF);
-                
-                // Draw button indicators
-                if (gamepad & Fixm.BUTTON_A) Fixm.drawRect(10, 10, 30, 20, 0xFF0000);
-                if (gamepad & Fixm.BUTTON_B) Fixm.drawRect(50, 10, 30, 20, 0x00FF00);
-                if (gamepad & Fixm.BUTTON_X) Fixm.drawRect(90, 10, 30, 20, 0x0000FF);
-                if (gamepad & Fixm.BUTTON_Y) Fixm.drawRect(130, 10, 30, 20, 0xFFFF00);
-                
-                // Display input state
-                const inputState = [];
-                if (gamepad & Fixm.BUTTON_UP) inputState.push('UP');
-                if (gamepad & Fixm.BUTTON_DOWN) inputState.push('DOWN');
-                if (gamepad & Fixm.BUTTON_LEFT) inputState.push('LEFT');
-                if (gamepad & Fixm.BUTTON_RIGHT) inputState.push('RIGHT');
-                if (gamepad & Fixm.BUTTON_A) inputState.push('A');
-                if (gamepad & Fixm.BUTTON_B) inputState.push('B');
-                if (gamepad & Fixm.BUTTON_X) inputState.push('X');
-                if (gamepad & Fixm.BUTTON_Y) inputState.push('Y');
-                
-                document.getElementById('input-display').textContent = 
-                    `Gamepad: 0x${gamepad.toString(16).padStart(2, '0')} | Buttons: ${inputState.join(', ') || 'None'}`;
-                
-                Fixm.present();
-                
-                if (inputDemoActive) {
-                    animationId = requestAnimationFrame(updateInputDemo);
-                }
-            }
-            
-            updateInputDemo();
+            currentDemo = 'input';
+            playerX = 150; // Reset player position
+            playerY = 110;
         }
 
         function clearScreen() {
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
-            }
-            inputDemoActive = false;
+            currentDemo = 'clear';
             document.getElementById('input-display').textContent = '';
-            Fixm.clear(0x000000);
-            Fixm.present();
         }
         
         // Initial demo

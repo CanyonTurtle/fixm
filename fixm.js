@@ -22,6 +22,11 @@
         spritesheets: new Map(),
         initialized: false,
         
+        // Event loop system
+        updateCallback: null,
+        running: false,
+        lastTime: 0,
+        
         // Input system
         keys: new Set(),
         gamepads: {},
@@ -95,6 +100,7 @@
 
         window.addEventListener('resize', () => this.resize());
         this.initialized = true;
+        this.startEventLoop();
     };
 
     Fixm.setupWebGL = function() {
@@ -593,6 +599,40 @@
 
         gl.useProgram(this.program);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    };
+
+    // Event loop system
+    Fixm.setUpdate = function(callback) {
+        this.updateCallback = callback;
+        if (!this.running && this.initialized) {
+            this.startEventLoop();
+        }
+    };
+
+    Fixm.startEventLoop = function() {
+        if (this.running) return;
+        this.running = true;
+        this.lastTime = performance.now();
+        this.gameLoop();
+    };
+
+    Fixm.stopEventLoop = function() {
+        this.running = false;
+    };
+
+    Fixm.gameLoop = function() {
+        if (!this.running) return;
+
+        const currentTime = performance.now();
+        const deltaTime = currentTime - this.lastTime;
+        this.lastTime = currentTime;
+
+        // Call user update function if set
+        if (this.updateCallback) {
+            this.updateCallback(deltaTime);
+        }
+
+        requestAnimationFrame(() => this.gameLoop());
     };
 
     // Auto-initialize when DOM is ready
