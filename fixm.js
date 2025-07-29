@@ -311,7 +311,7 @@
                     width: 100%;
                     height: 100%;
                     pointer-events: none;
-                    z-index: 1000;
+                    z-index: 10;
                     font-family: monospace;
                     user-select: none;
                 }
