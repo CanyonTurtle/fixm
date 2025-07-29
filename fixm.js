@@ -158,23 +158,23 @@
         
         if (this.expandableWidth || this.expandableHeight) {
             if (this.expandableWidth && this.expandableHeight) {
-                // Both expandable: find largest integer scale that fits
-                const scaleX = Math.floor(containerWidth / this.minWidth);
-                const scaleY = Math.floor(containerHeight / this.minHeight);
+                // Both expandable: find largest scale that fits, maintaining aspect ratio
+                const scaleX = containerWidth / this.minWidth;
+                const scaleY = containerHeight / this.minHeight;
                 const scale = Math.min(scaleX, scaleY);
                 
                 if (scale >= 1) {
-                    this.width = this.minWidth * scale;
-                    this.height = this.minHeight * scale;
+                    this.width = Math.floor(this.minWidth * scale);
+                    this.height = Math.floor(this.minHeight * scale);
                 }
             } else if (this.expandableWidth) {
                 // Width expandable: height determines scale, width uses remaining space
-                const scale = Math.max(1, Math.floor(containerHeight / this.minHeight));
+                const scale = Math.max(1, containerHeight / this.minHeight);
                 this.height = this.minHeight;
                 this.width = Math.max(this.minWidth, Math.floor(containerWidth / scale));
             } else if (this.expandableHeight) {
                 // Height expandable: width determines scale, height uses remaining space
-                const scale = Math.max(1, Math.floor(containerWidth / this.minWidth));
+                const scale = Math.max(1, containerWidth / this.minWidth);
                 this.width = this.minWidth;
                 this.height = Math.max(this.minHeight, Math.floor(containerHeight / scale));
             }
@@ -608,8 +608,8 @@
         this.canvas.width = this.width;
         this.canvas.height = this.height;
         
-        // Calculate the largest integer scale that fits the canvas in the container
-        const scale = Math.max(1, Math.floor(Math.min(containerWidth / this.width, containerHeight / this.height)));
+        // Calculate the largest scale that fits the canvas in the container
+        const scale = Math.max(1, Math.min(containerWidth / this.width, containerHeight / this.height));
         
         // Set canvas display size (this creates the black bars automatically)
         this.canvas.style.width = (this.width * scale) + 'px';
