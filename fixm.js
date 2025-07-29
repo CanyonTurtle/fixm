@@ -745,7 +745,7 @@
         }
         
         // Animate FIXM text
-        const textProgress = Math.max(0, (progress - 0.2) * 1.25); // Start text after 20% of animation
+        const textProgress = Math.max(0, (progress - 0.1) * 2.0); // Start text after 10% and animate 2x faster
         
         if (textProgress > 0) {
             // FIXM letters animate in one by one
@@ -754,17 +754,22 @@
             const startX = this.width / 2 - (letters.length * letterSpacing) / 2;
             
             letters.forEach((letter, index) => {
-                const letterProgress = Math.max(0, Math.min(1, textProgress * 4 - index));
+                const letterProgress = Math.max(0, Math.min(1, textProgress * 6 - index * 0.8)); // Faster cascade
                 
                 if (letterProgress > 0) {
                     // Letter slides in from above with bounce
-                    const bounceY = Math.sin(letterProgress * Math.PI) * 20;
+                    const bounceY = Math.sin(letterProgress * Math.PI) * 15;
                     const finalY = this.height / 2 - 20;
-                    const y = finalY - (1 - letterProgress) * 50 + bounceY;
+                    const y = finalY - (1 - letterProgress) * 60 + bounceY;
                     
-                    // Color cycles through rainbow
-                    const hue = (index * 90 + this.startupTime * 0.1) % 360;
-                    const color = this.hslToRgb(hue, 0.9, 0.7);
+                    // Distinct colors for letters - bright neon colors different from particles
+                    const letterColors = [
+                        0xFF0080, // Hot pink/magenta
+                        0x00FF80, // Bright green  
+                        0x8000FF, // Electric purple
+                        0xFF8000  // Bright orange
+                    ];
+                    const color = letterColors[index];
                     
                     // Scale effect
                     const scale = 0.5 + letterProgress * 0.5;
