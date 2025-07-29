@@ -365,39 +365,69 @@
         
         document.body.appendChild(this.touchControls);
         
-        // Touch event handlers
-        const handleTouch = (e, isDown) => {
+        // Touch event handlers with proper drag-off handling
+        let activeTouchButtons = new Set();
+        
+        const updateTouchButtons = (e) => {
             e.preventDefault();
             
-            for (let touch of e.touches || [e]) {
+            // Get all currently touched buttons
+            const currentlyTouched = new Set();
+            
+            for (let touch of e.touches || []) {
                 const element = document.elementFromPoint(touch.clientX, touch.clientY);
                 if (element && element.dataset.button) {
-                    const button = element.dataset.button;
-                    if (isDown) {
-                        element.classList.add('active');
-                        this.simulateKeyDown(button, 0);
-                    } else {
-                        element.classList.remove('active');
+                    currentlyTouched.add(element.dataset.button);
+                }
+            }
+            
+            // Remove buttons that are no longer being touched
+            for (let button of activeTouchButtons) {
+                if (!currentlyTouched.has(button)) {
+                    // Find the button element and deactivate it
+                    const buttonElement = this.touchControls.querySelector(`[data-button="${button}"]`);
+                    if (buttonElement) {
+                        buttonElement.classList.remove('active');
                         this.simulateKeyUp(button, 0);
                     }
                 }
             }
             
-            // Handle touch end - remove all active states
-            if (!isDown && e.touches.length === 0) {
-                this.touchControls.querySelectorAll('.active').forEach(el => {
-                    el.classList.remove('active');
-                    if (el.dataset.button) {
-                        this.simulateKeyUp(el.dataset.button, 0);
+            // Add newly touched buttons
+            for (let button of currentlyTouched) {
+                if (!activeTouchButtons.has(button)) {
+                    // Find the button element and activate it
+                    const buttonElement = this.touchControls.querySelector(`[data-button="${button}"]`);
+                    if (buttonElement) {
+                        buttonElement.classList.add('active');
+                        this.simulateKeyDown(button, 0);
                     }
-                });
+                }
             }
+            
+            // Update our tracking set
+            activeTouchButtons = currentlyTouched;
         };
         
-        this.touchControls.addEventListener('touchstart', (e) => handleTouch(e, true));
-        this.touchControls.addEventListener('touchmove', (e) => handleTouch(e, true));
-        this.touchControls.addEventListener('touchend', (e) => handleTouch(e, false));
-        this.touchControls.addEventListener('touchcancel', (e) => handleTouch(e, false));
+        const clearAllTouches = (e) => {
+            e.preventDefault();
+            
+            // Clear all active buttons
+            for (let button of activeTouchButtons) {
+                const buttonElement = this.touchControls.querySelector(`[data-button="${button}"]`);
+                if (buttonElement) {
+                    buttonElement.classList.remove('active');
+                    this.simulateKeyUp(button, 0);
+                }
+            }
+            
+            activeTouchButtons.clear();
+        };
+        
+        this.touchControls.addEventListener('touchstart', updateTouchButtons);
+        this.touchControls.addEventListener('touchmove', updateTouchButtons);
+        this.touchControls.addEventListener('touchend', clearAllTouches);
+        this.touchControls.addEventListener('touchcancel', clearAllTouches);
     };
 
     // Simulate key events for touch controls
