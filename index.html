@@ -59,6 +59,60 @@
             { name: 'Config Demo', state: 'config' }
         ];
         
+        // Demo standardization helpers
+        let scrollOffset = 0;
+        
+        function drawDemoTab(demoName) {
+            const screen = Fixm.getScreenSize();
+            const tabHeight = 20;
+            const tabY = screen.height - tabHeight;
+            
+            // Draw tab background
+            Fixm.drawRect(0, tabY, screen.width, tabHeight, 0x222222);
+            
+            // Create scrolling text
+            const exitText = ' • PRESS X/Y TO EXIT • ';
+            const fullText = demoName.toUpperCase() + exitText;
+            const textWidth = fullText.length * 8;
+            
+            // Update scroll offset
+            scrollOffset += 0.5;
+            if (scrollOffset >= textWidth) {
+                scrollOffset = 0;
+            }
+            
+            // Draw scrolling text - calculate positions to avoid overlap
+            const x1 = Math.floor(-scrollOffset);
+            const x2 = x1 + textWidth;
+            
+            // Draw first copy
+            if (x1 < screen.width) {
+                Fixm.drawText(fullText, x1, tabY + 6, 0xFFFFFF);
+            }
+            
+            // Draw second copy only if needed and won't overlap
+            if (x2 < screen.width && x1 + textWidth < screen.width) {
+                Fixm.drawText(fullText, x2, tabY + 6, 0xFFFFFF);
+            }
+        }
+        
+        function handleDemoExit() {
+            const gamepad = Fixm.getGamepad(0);
+            if (frame - lastInputTime > 10) {
+                if (gamepad & (Fixm.BUTTON_X | Fixm.BUTTON_Y)) {
+                    // Stop audio when leaving audio demo
+                    if (gameState === 'audio') {
+                        audioPlaying = false;
+                        stopAllChannels();
+                    }
+                    gameState = 'menu';
+                    lastInputTime = frame;
+                    return true;
+                }
+            }
+            return false;
+        }
+        
         // Set up the main update loop
         Fixm.setUpdate((deltaTime) => {
             frame++;
@@ -84,16 +138,8 @@
                         lastInputTime = frame;
                     }
                 } else {
-                    // Return to menu from any demo
-                    if (gamepad & (Fixm.BUTTON_X | Fixm.BUTTON_Y)) {
-                        // Stop audio when leaving audio demo
-                        if (gameState === 'audio') {
-                            audioPlaying = false;
-                            stopAllChannels();
-                        }
-                        gameState = 'menu';
-                        lastInputTime = frame;
-                    }
+                    // Handle demo exit
+                    handleDemoExit();
                 }
             }
             
@@ -183,10 +229,8 @@
                 }
             }
             
-            // Title - bottom right
-            const titleX = screen.width - 'RECTANGLES DEMO'.length * 8 - 10;
-            const titleY = screen.height - 30;
-            Fixm.drawText('RECTANGLES DEMO', titleX, titleY, 0xFFFFFF);
+            // Standardized demo tab
+            drawDemoTab('Rectangles Demo');
         }
         
         function updateSprite() {
@@ -210,10 +254,8 @@
                 Fixm.blitSub(0, 0, 15, 15, x, y, 'test');
             }
             
-            // Title - bottom right
-            const titleX = screen.width - 'SPRITE DEMO'.length * 8 - 10;
-            const titleY = screen.height - 30;
-            Fixm.drawText('SPRITE DEMO', titleX, titleY, 0xFFFFFF);
+            // Standardized demo tab
+            drawDemoTab('Sprite Demo');
         }
         
         function updateAnimate() {
@@ -246,14 +288,13 @@
             const spriteY = Math.cos(frame * 0.03) * moveRangeY + centerY;
             Fixm.blitSub(0, 0, spriteW, spriteH, Math.floor(spriteX), Math.floor(spriteY), 'test');
             
-            // Show sprite info - bottom left
+            // Show sprite info - top left
             if (imageInfo) {
-                Fixm.drawText(`SPRITE: ${spriteW}X${spriteH}`, 10, screen.height - 20, 0x00FFFF);
+                Fixm.drawText(`SPRITE: ${spriteW}X${spriteH}`, 10, 10, 0x00FFFF);
             }
             
-            // Title - top right
-            const titleX = screen.width - 'ANIMATION DEMO'.length * 8 - 10;
-            Fixm.drawText('ANIMATION DEMO', titleX, 20, 0xFFFFFF);
+            // Standardized demo tab
+            drawDemoTab('Animation Demo');
         }
         
         function updateInput() {
@@ -266,9 +307,9 @@
             if (gamepad & Fixm.BUTTON_UP) playerY -= 2;
             if (gamepad & Fixm.BUTTON_DOWN) playerY += 2;
             
-            // Keep player in bounds - use screen size
+            // Keep player in bounds - use screen size (account for demo tab)
             playerX = Math.max(0, Math.min(playerX, screen.width - 20));
-            playerY = Math.max(0, Math.min(playerY, screen.height - 20));
+            playerY = Math.max(0, Math.min(playerY, screen.height - 40)); // Leave space for tab
             
             // Clear screen
             Fixm.clear(0x001122);
@@ -288,11 +329,12 @@
             if (gamepad & Fixm.BUTTON_X) Fixm.drawRect(buttonStartX + (buttonWidth + buttonSpacing) * 2, 10, buttonWidth, buttonHeight, 0x0000FF);
             if (gamepad & Fixm.BUTTON_Y) Fixm.drawRect(buttonStartX + (buttonWidth + buttonSpacing) * 3, 10, buttonWidth, buttonHeight, 0xFFFF00);
             
-            // Title and instructions - bottom of screen, centered
-            const titleX = Math.floor((screen.width - 'INPUT DEMO'.length * 8) / 2);
+            // Instructions - centered in middle area
             const instructX = Math.floor((screen.width - 'MOVE WITH WASD ARROWS'.length * 8) / 2);
-            Fixm.drawText('INPUT DEMO', titleX, screen.height - 40, 0xFFFFFF);
-            Fixm.drawText('MOVE WITH WASD ARROWS', instructX, screen.height - 25, 0xCCCCCC);
+            Fixm.drawText('MOVE WITH WASD ARROWS', instructX, screen.height - 40, 0xCCCCCC);
+            
+            // Standardized demo tab
+            drawDemoTab('Input Demo');
         }
         
         
@@ -362,8 +404,8 @@
                 }
             }
             
-            // Song structure visualization - bottom section
-            const structureY = screen.height - 60;
+            // Song structure visualization - above demo tab
+            const structureY = screen.height - 50;
             Fixm.drawText('SONG STRUCTURE:', 10, structureY, 0xCCCCCC);
             const sections = ['INTRO', 'VERSE', 'CHORUS', 'VERSE', 'CHORUS', 'OUTRO'];
             const currentSection = Math.min(Math.floor(measure / 4), sections.length - 1);
@@ -372,8 +414,11 @@
             for (let i = 0; i < sections.length; i++) {
                 const color = i === currentSection ? 0xFFFF00 : 0x666666;
                 const x = 10 + i * sectionSpacing;
-                Fixm.drawText(sections[i].substring(0, 4), x, structureY + 15, color);
+                Fixm.drawText(sections[i].substring(0, 4), x, structureY + 10, color);
             }
+            
+            // Standardized demo tab
+            drawDemoTab('Audio Test');
             
             // Restart song after it ends (24 measures = ~48 seconds)
             if (measure >= 24) {
@@ -562,20 +607,23 @@
                 }
             }
             
-            // Instructions - bottom of screen, centered
-            const instructStartY = screen.height - 60;
+            // Instructions - above demo tab
+            const instructStartY = screen.height - 80;
             const instruct1X = Math.floor((screen.width - 'UP DOWN: SELECT ITEM'.length * 8) / 2);
             const instruct2X = Math.floor((screen.width - 'LEFT RIGHT: CHANGE VALUE'.length * 8) / 2);
-            const instruct3X = Math.floor((screen.width - 'A: APPLY  X Y: BACK TO MENU'.length * 8) / 2);
+            const instruct3X = Math.floor((screen.width - 'A: APPLY'.length * 8) / 2);
             
             Fixm.drawText('UP DOWN: SELECT ITEM', instruct1X, instructStartY, 0x888888);
             Fixm.drawText('LEFT RIGHT: CHANGE VALUE', instruct2X, instructStartY + 15, 0x888888);
-            Fixm.drawText('A: APPLY  X Y: BACK TO MENU', instruct3X, instructStartY + 30, 0x888888);
+            Fixm.drawText('A: APPLY', instruct3X, instructStartY + 30, 0x888888);
             
-            // Current settings display - very bottom
+            // Current settings display - above demo tab
             const currentText = `CURRENT: ${Fixm.width}X${Fixm.height} ${Fixm.mode.toUpperCase()}`;
             const currentX = Math.floor((screen.width - currentText.length * 8) / 2);
-            Fixm.drawText(currentText, currentX, screen.height - 10, 0x666666);
+            Fixm.drawText(currentText, currentX, screen.height - 30, 0x666666);
+            
+            // Standardized demo tab
+            drawDemoTab('Config Demo');
         }
         
         function adjustConfigValue(direction) {
