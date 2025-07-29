@@ -116,6 +116,12 @@
             this.touchControls.parentNode.removeChild(this.touchControls);
         }
 
+        // Remove injected CSS styles
+        const styleElement = document.getElementById('fixm-default-styles');
+        if (styleElement && styleElement.parentNode) {
+            styleElement.parentNode.removeChild(styleElement);
+        }
+
         // Clear WebGL resources
         if (this.gl) {
             // Delete WebGL resources
@@ -181,6 +187,92 @@
         }
     };
 
+    // Inject default CSS styles for game container, canvas, and fullscreen button
+    Fixm.injectDefaultCSS = function() {
+        // Check if styles are already injected to avoid duplicates
+        if (document.getElementById('fixm-default-styles')) {
+            return;
+        }
+
+        const styleElement = document.createElement('style');
+        styleElement.id = 'fixm-default-styles';
+        styleElement.textContent = `
+            body, html {
+                margin: 0;
+                padding: 0;
+                background: #000;
+                overflow: hidden;
+            }
+            
+            .game-container {
+                width: 100vw;
+                height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            
+            canvas {
+                max-width: 100vw;
+                max-height: 100vh;
+                image-rendering: pixelated;
+                image-rendering: crisp-edges;
+                outline: 0px;
+            }
+            
+            /* Fullscreen toggle button */
+            .fullscreen-toggle {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                width: 40px;
+                height: 40px;
+                background: rgba(0, 0, 0, 0.6);
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 8px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 2000;
+                transition: all 0.2s ease;
+                user-select: none;
+                touch-action: manipulation;
+            }
+            
+            .fullscreen-toggle:hover {
+                background: rgba(0, 0, 0, 0.8);
+                border-color: rgba(255, 255, 255, 0.6);
+                transform: scale(1.1);
+            }
+            
+            .fullscreen-toggle:active {
+                transform: scale(0.95);
+            }
+            
+            .fullscreen-toggle svg {
+                width: 20px;
+                height: 20px;
+                fill: rgba(255, 255, 255, 0.8);
+            }
+            
+            .fullscreen-toggle:hover svg {
+                fill: rgba(255, 255, 255, 1);
+            }
+            
+            /* Hide fullscreen button when already in fullscreen */
+            .fullscreen-active .fullscreen-toggle {
+                opacity: 0.5;
+            }
+            
+            .fullscreen-active .fullscreen-toggle:hover {
+                opacity: 1;
+            }
+        `;
+
+        document.head.appendChild(styleElement);
+    };
+
     // Initialize the graphics system
     Fixm.init = function(options = {}) {
         // Preserve update callback during reinitialization
@@ -199,6 +291,9 @@
         
         // Calculate internal resolution based on expandable settings
         this.calculateInternalResolution();
+
+        // Inject default CSS styles
+        this.injectDefaultCSS();
 
         // Create canvas
         this.canvas = document.createElement('canvas');
