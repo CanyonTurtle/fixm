@@ -144,51 +144,39 @@
         this.loopId++; // Increment to invalidate any pending requestAnimationFrame callbacks
     };
 
-    // Calculate actual resolution based on expandable settings
-    Fixm.calculateActualResolution = function() {
-        // Start with minimum dimensions
-        this.width = this.minWidth;
-        this.height = this.minHeight;
-        
-        // Get container dimensions
+    // Calculate internal resolution based on container size and expandable settings
+    Fixm.calculateInternalResolution = function() {
+        // Get container dimensions - never modify the container
         const gameContainer = document.querySelector('.game-container');
         const container = gameContainer || document.body;
         const containerWidth = container.clientWidth || window.innerWidth;
         const containerHeight = container.clientHeight || window.innerHeight;
         
-        // Calculate how much we can expand
+        // Start with minimum dimensions
+        this.width = this.minWidth;
+        this.height = this.minHeight;
+        
         if (this.expandableWidth || this.expandableHeight) {
             if (this.expandableWidth && this.expandableHeight) {
-                // Both expandable: scale both dimensions equally (maintain aspect ratio)
-                const scaleX = containerWidth / this.minWidth;
-                const scaleY = containerHeight / this.minHeight;
+                // Both expandable: find largest integer scale that fits
+                const scaleX = Math.floor(containerWidth / this.minWidth);
+                const scaleY = Math.floor(containerHeight / this.minHeight);
                 const scale = Math.min(scaleX, scaleY);
                 
                 if (scale >= 1) {
-                    const pixelPerfectScale = Math.floor(scale);
-                    this.width = this.minWidth * pixelPerfectScale;
-                    this.height = this.minHeight * pixelPerfectScale;
+                    this.width = this.minWidth * scale;
+                    this.height = this.minHeight * scale;
                 }
             } else if (this.expandableWidth) {
-                // Only width expandable: calculate how much extra width we can use
-                // First, determine the display scale based on height constraint
-                const heightScale = Math.floor(containerHeight / this.minHeight);
-                const displayScale = Math.max(1, heightScale);
-                
-                // Calculate how much width we can actually use at this scale
-                const maxWidthPixels = Math.floor(containerWidth / displayScale);
-                this.width = Math.max(this.minWidth, maxWidthPixels);
+                // Width expandable: height determines scale, width uses remaining space
+                const scale = Math.max(1, Math.floor(containerHeight / this.minHeight));
                 this.height = this.minHeight;
+                this.width = Math.max(this.minWidth, Math.floor(containerWidth / scale));
             } else if (this.expandableHeight) {
-                // Only height expandable: calculate how much extra height we can use
-                // First, determine the display scale based on width constraint
-                const widthScale = Math.floor(containerWidth / this.minWidth);
-                const displayScale = Math.max(1, widthScale);
-                
-                // Calculate how much height we can actually use at this scale
-                const maxHeightPixels = Math.floor(containerHeight / displayScale);
+                // Height expandable: width determines scale, height uses remaining space
+                const scale = Math.max(1, Math.floor(containerWidth / this.minWidth));
                 this.width = this.minWidth;
-                this.height = Math.max(this.minHeight, maxHeightPixels);
+                this.height = Math.max(this.minHeight, Math.floor(containerHeight / scale));
             }
         }
     };
@@ -209,8 +197,8 @@
         this.expandableHeight = options.expandableHeight || false;
         this.showStartup = options.showStartup !== false; // Default to true unless explicitly false
         
-        // Calculate actual resolution based on expandable settings
-        this.calculateActualResolution();
+        // Calculate internal resolution based on expandable settings
+        this.calculateInternalResolution();
 
         // Create canvas
         this.canvas = document.createElement('canvas');
@@ -597,10 +585,10 @@
     };
 
     Fixm.resize = function() {
-        // Recalculate actual resolution based on new container size
+        // Recalculate internal resolution based on current container size
         const oldWidth = this.width;
         const oldHeight = this.height;
-        this.calculateActualResolution();
+        this.calculateInternalResolution();
         
         // Recreate buffer if resolution changed
         if (oldWidth !== this.width || oldHeight !== this.height) {
@@ -611,39 +599,21 @@
             }
         }
 
+        // Get container dimensions
         const container = this.canvas.parentElement || document.body;
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;
 
-        // Set canvas internal resolution to calculated game resolution
+        // Set canvas internal resolution
         this.canvas.width = this.width;
         this.canvas.height = this.height;
         
-        // For expandable resolutions, we want to fill the container
-        if (this.expandableWidth || this.expandableHeight) {
-            if (this.expandableWidth && this.expandableHeight) {
-                // Both expandable: canvas should fill container completely
-                this.canvas.style.width = containerWidth + 'px';
-                this.canvas.style.height = containerHeight + 'px';
-            } else if (this.expandableWidth) {
-                // Width expandable: fill width, scale height proportionally
-                const scale = Math.floor(containerHeight / this.height);
-                this.canvas.style.width = containerWidth + 'px';
-                this.canvas.style.height = (this.height * scale) + 'px';
-            } else if (this.expandableHeight) {
-                // Height expandable: fill height, scale width proportionally  
-                const scale = Math.floor(containerWidth / this.width);
-                this.canvas.style.width = (this.width * scale) + 'px';
-                this.canvas.style.height = containerHeight + 'px';
-            }
-        } else {
-            // Non-expandable: use integer scaling with black bars
-            const scale = Math.floor(Math.min(containerWidth / this.width, containerHeight / this.height));
-            const displayWidth = this.width * scale;
-            const displayHeight = this.height * scale;
-            this.canvas.style.width = displayWidth + 'px';
-            this.canvas.style.height = displayHeight + 'px';
-        }
+        // Calculate the largest integer scale that fits the canvas in the container
+        const scale = Math.max(1, Math.floor(Math.min(containerWidth / this.width, containerHeight / this.height)));
+        
+        // Set canvas display size (this creates the black bars automatically)
+        this.canvas.style.width = (this.width * scale) + 'px';
+        this.canvas.style.height = (this.height * scale) + 'px';
 
         if (this.gl) {
             this.gl.viewport(0, 0, this.width, this.height);

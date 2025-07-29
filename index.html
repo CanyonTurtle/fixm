@@ -41,9 +41,9 @@
                 overflow: hidden;
             }
             canvas {
-                width: 100vw !important;
-                height: 100vh !important;
-                object-fit: contain;
+                /* JavaScript handles all sizing to maintain square pixels */
+                max-width: 100vw;
+                max-height: 100vh;
             }
         }
         
