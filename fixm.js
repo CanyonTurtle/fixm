@@ -156,36 +156,39 @@
         const containerWidth = container.clientWidth || window.innerWidth;
         const containerHeight = container.clientHeight || window.innerHeight;
         
-        // Calculate how much we can expand while maintaining aspect ratio
+        // Calculate how much we can expand
         if (this.expandableWidth || this.expandableHeight) {
-            // Calculate the scale that would fit the container
-            const scaleX = containerWidth / this.minWidth;
-            const scaleY = containerHeight / this.minHeight;
-            
-            // Use the smaller scale to maintain aspect ratio
-            const scale = Math.min(scaleX, scaleY);
-            
-            // Only expand if we have room (scale > 1) and pixel-perfect scaling
-            if (scale >= 1) {
-                const pixelPerfectScale = Math.floor(scale);
+            if (this.expandableWidth && this.expandableHeight) {
+                // Both expandable: scale both dimensions equally (maintain aspect ratio)
+                const scaleX = containerWidth / this.minWidth;
+                const scaleY = containerHeight / this.minHeight;
+                const scale = Math.min(scaleX, scaleY);
                 
-                if (this.expandableWidth && this.expandableHeight) {
-                    // Both expandable: scale both dimensions
+                if (scale >= 1) {
+                    const pixelPerfectScale = Math.floor(scale);
                     this.width = this.minWidth * pixelPerfectScale;
                     this.height = this.minHeight * pixelPerfectScale;
-                } else if (this.expandableWidth) {
-                    // Only width expandable: expand width to use available space
-                    const availableWidth = Math.floor(containerWidth / pixelPerfectScale) * pixelPerfectScale;
-                    const maxWidth = Math.floor(availableWidth / pixelPerfectScale);
-                    this.width = Math.max(this.minWidth, maxWidth);
-                    this.height = this.minHeight;
-                } else if (this.expandableHeight) {
-                    // Only height expandable: expand height to use available space  
-                    const availableHeight = Math.floor(containerHeight / pixelPerfectScale) * pixelPerfectScale;
-                    const maxHeight = Math.floor(availableHeight / pixelPerfectScale);
-                    this.width = this.minWidth;
-                    this.height = Math.max(this.minHeight, maxHeight);
                 }
+            } else if (this.expandableWidth) {
+                // Only width expandable: calculate how much extra width we can use
+                // First, determine the display scale based on height constraint
+                const heightScale = Math.floor(containerHeight / this.minHeight);
+                const displayScale = Math.max(1, heightScale);
+                
+                // Calculate how much width we can actually use at this scale
+                const maxWidthPixels = Math.floor(containerWidth / displayScale);
+                this.width = Math.max(this.minWidth, maxWidthPixels);
+                this.height = this.minHeight;
+            } else if (this.expandableHeight) {
+                // Only height expandable: calculate how much extra height we can use
+                // First, determine the display scale based on width constraint
+                const widthScale = Math.floor(containerWidth / this.minWidth);
+                const displayScale = Math.max(1, widthScale);
+                
+                // Calculate how much height we can actually use at this scale
+                const maxHeightPixels = Math.floor(containerHeight / displayScale);
+                this.width = this.minWidth;
+                this.height = Math.max(this.minHeight, maxHeightPixels);
             }
         }
     };
@@ -612,18 +615,35 @@
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;
 
-        // Calculate scale for CSS display
-        const scale = Math.floor(Math.min(containerWidth / this.width, containerHeight / this.height));
-        const displayWidth = this.width * scale;
-        const displayHeight = this.height * scale;
-
-        // Set canvas internal resolution to game resolution
+        // Set canvas internal resolution to calculated game resolution
         this.canvas.width = this.width;
         this.canvas.height = this.height;
         
-        // Set CSS display size for scaling
-        this.canvas.style.width = displayWidth + 'px';
-        this.canvas.style.height = displayHeight + 'px';
+        // For expandable resolutions, we want to fill the container
+        if (this.expandableWidth || this.expandableHeight) {
+            if (this.expandableWidth && this.expandableHeight) {
+                // Both expandable: canvas should fill container completely
+                this.canvas.style.width = containerWidth + 'px';
+                this.canvas.style.height = containerHeight + 'px';
+            } else if (this.expandableWidth) {
+                // Width expandable: fill width, scale height proportionally
+                const scale = Math.floor(containerHeight / this.height);
+                this.canvas.style.width = containerWidth + 'px';
+                this.canvas.style.height = (this.height * scale) + 'px';
+            } else if (this.expandableHeight) {
+                // Height expandable: fill height, scale width proportionally  
+                const scale = Math.floor(containerWidth / this.width);
+                this.canvas.style.width = (this.width * scale) + 'px';
+                this.canvas.style.height = containerHeight + 'px';
+            }
+        } else {
+            // Non-expandable: use integer scaling with black bars
+            const scale = Math.floor(Math.min(containerWidth / this.width, containerHeight / this.height));
+            const displayWidth = this.width * scale;
+            const displayHeight = this.height * scale;
+            this.canvas.style.width = displayWidth + 'px';
+            this.canvas.style.height = displayHeight + 'px';
+        }
 
         if (this.gl) {
             this.gl.viewport(0, 0, this.width, this.height);
