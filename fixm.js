@@ -557,6 +557,20 @@
         }
     };
 
+    // Get image information (dimensions) for a spritesheet
+    Fixm.getImageInfo = function(spritesheetName = 'default') {
+        const spritesheet = this.spritesheets.get(spritesheetName);
+        if (!spritesheet) {
+            return null;
+        }
+
+        return {
+            width: spritesheet.naturalWidth || spritesheet.width,
+            height: spritesheet.naturalHeight || spritesheet.height,
+            name: spritesheetName
+        };
+    };
+
     // Font and text rendering system
     Fixm.setupFont = function() {
         // Default 8x8 bitmap font (each character is 8 bytes, 1 bit per pixel)
