@@ -832,18 +832,22 @@
                 this.startupFadeOut = false;
                 this.startupFadeTime = 0;
             } else {
-                // Apply fade-out overlay
+                // Simple fade-out: draw a black rectangle with increasing opacity
                 const alpha = Math.floor(fadeProgress * 255);
-                const fadeColor = (alpha << 24) | 0x000000; // Black with increasing alpha
+                const fadeColor = alpha << 24; // Black with alpha
                 
-                // Draw fade overlay by darkening all pixels
+                // Draw fade overlay as black rectangles
                 for (let y = 0; y < this.height; y++) {
                     for (let x = 0; x < this.width; x++) {
-                        const offset = (y * this.width + x) * 4;
                         const fadeAmount = 1.0 - fadeProgress;
-                        this.buffer[offset] = Math.floor(this.buffer[offset] * fadeAmount);     // R
-                        this.buffer[offset + 1] = Math.floor(this.buffer[offset + 1] * fadeAmount); // G
-                        this.buffer[offset + 2] = Math.floor(this.buffer[offset + 2] * fadeAmount); // B
+                        const originalOffset = (y * this.width + x) * 4;
+                        
+                        // Blend with black based on fade progress
+                        const r = Math.floor(this.buffer[originalOffset] * fadeAmount);
+                        const g = Math.floor(this.buffer[originalOffset + 1] * fadeAmount);
+                        const b = Math.floor(this.buffer[originalOffset + 2] * fadeAmount);
+                        
+                        this.setPixel(x, y, (r << 16) | (g << 8) | b);
                     }
                 }
             }
