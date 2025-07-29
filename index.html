@@ -268,6 +268,11 @@
             const bgColor = Math.floor(Math.sin(frame * 0.02) * 32 + 32);
             Fixm.clear(bgColor << 16 | bgColor << 8 | bgColor * 2);
             
+            // Get sprite info for dynamic sizing
+            const imageInfo = Fixm.getImageInfo('test');
+            const spriteW = imageInfo ? imageInfo.width : 8;
+            const spriteH = imageInfo ? imageInfo.height : 8;
+            
             // Animated rectangles
             for (let i = 0; i < 5; i++) {
                 const x = Math.sin(frame * 0.03 + i) * 100 + 160;
@@ -276,10 +281,15 @@
                 Fixm.drawRect(Math.floor(x), Math.floor(y), 20, 20, color);
             }
             
-            // Animated sprites
+            // Animated sprites using actual sprite dimensions
             const spriteX = Math.sin(frame * 0.05) * 140 + 160;
             const spriteY = Math.cos(frame * 0.03) * 100 + 120;
-            Fixm.blitSub(0, 0, 8, 8, Math.floor(spriteX), Math.floor(spriteY), 'test');
+            Fixm.blitSub(0, 0, spriteW, spriteH, Math.floor(spriteX), Math.floor(spriteY), 'test');
+            
+            // Show sprite info
+            if (imageInfo) {
+                Fixm.drawText(`SPRITE: ${spriteW}X${spriteH}`, 10, 220, 0x00FFFF);
+            }
             
             Fixm.drawText('ANIMATION DEMO', 190, 20, 0xFFFFFF);
         }
