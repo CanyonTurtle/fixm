@@ -31,6 +31,12 @@
         running: false,
         lastTime: 0,
         
+        // Startup animation system
+        showStartup: true,
+        startupActive: false,
+        startupTime: 0,
+        startupDuration: 3000, // 3 seconds
+        
         // Input system
         keys: new Set(),
         gamepads: {},
@@ -79,6 +85,7 @@
         this.width = options.width || 320;
         this.height = options.height || 240;
         this.mode = options.mode || 'truecolor';
+        this.showStartup = options.showStartup !== false; // Default to true unless explicitly false
 
         // Create canvas
         this.canvas = document.createElement('canvas');
@@ -112,6 +119,14 @@
 
         window.addEventListener('resize', () => this.resize());
         this.initialized = true;
+        
+        // Start with startup animation if enabled
+        if (this.showStartup) {
+            this.startupActive = true;
+            this.startupTime = 0;
+            this.playStartupSound();
+        }
+        
         this.startEventLoop();
     };
 
@@ -685,6 +700,119 @@
         this.currentFont = this.defaultFont;
     };
 
+    // Startup animation system
+    Fixm.playStartupSound = function() {
+        if (!this.audioContext) return;
+        
+        // Play a nice startup chord progression
+        const frequencies = [523, 659, 784]; // C5, E5, G5 - major chord
+        
+        frequencies.forEach((freq, index) => {
+            setTimeout(() => {
+                this.channelSet(index, freq, 'sine');
+                setTimeout(() => this.channelSet(index, 0), 400);
+            }, index * 100);
+        });
+        
+        // Final high note
+        setTimeout(() => {
+            this.channelSet(0, 1047, 'sine'); // C6
+            setTimeout(() => this.channelSet(0, 0), 600);
+        }, 800);
+    };
+
+    Fixm.renderStartupAnimation = function(deltaTime) {
+        this.startupTime += deltaTime;
+        const progress = this.startupTime / this.startupDuration;
+        
+        // Clear with animated background
+        const bgColor = Math.floor(Math.sin(this.startupTime * 0.005) * 32 + 64);
+        this.clear((bgColor << 16) | (bgColor << 8) | (bgColor * 2));
+        
+        // Draw animated particles
+        for (let i = 0; i < 20; i++) {
+            const angle = (this.startupTime * 0.002 + i * 0.314) % (Math.PI * 2);
+            const radius = 40 + Math.sin(this.startupTime * 0.003 + i) * 20;
+            const x = this.width / 2 + Math.cos(angle) * radius;
+            const y = this.height / 2 + Math.sin(angle) * radius;
+            const size = 3 + Math.sin(this.startupTime * 0.004 + i) * 2;
+            
+            // Colorful particles
+            const hue = (i * 60 + this.startupTime * 0.1) % 360;
+            const color = this.hslToRgb(hue, 0.8, 0.6);
+            
+            this.drawRect(Math.floor(x), Math.floor(y), Math.floor(size), Math.floor(size), color);
+        }
+        
+        // Animate FIXM text
+        const textProgress = Math.max(0, (progress - 0.2) * 1.25); // Start text after 20% of animation
+        
+        if (textProgress > 0) {
+            // FIXM letters animate in one by one
+            const letters = ['F', 'I', 'X', 'M'];
+            const letterSpacing = 20;
+            const startX = this.width / 2 - (letters.length * letterSpacing) / 2;
+            
+            letters.forEach((letter, index) => {
+                const letterProgress = Math.max(0, Math.min(1, textProgress * 4 - index));
+                
+                if (letterProgress > 0) {
+                    // Letter slides in from above with bounce
+                    const bounceY = Math.sin(letterProgress * Math.PI) * 20;
+                    const finalY = this.height / 2 - 20;
+                    const y = finalY - (1 - letterProgress) * 50 + bounceY;
+                    
+                    // Color cycles through rainbow
+                    const hue = (index * 90 + this.startupTime * 0.1) % 360;
+                    const color = this.hslToRgb(hue, 0.9, 0.7);
+                    
+                    // Scale effect
+                    const scale = 0.5 + letterProgress * 0.5;
+                    
+                    // Draw letter with scale effect (simplified - just draw multiple times for effect)
+                    for (let sx = 0; sx < scale * 2; sx++) {
+                        for (let sy = 0; sy < scale * 2; sy++) {
+                            this.drawChar(letter, 
+                                Math.floor(startX + index * letterSpacing + sx), 
+                                Math.floor(y + sy), 
+                                color);
+                        }
+                    }
+                }
+            });
+            
+            // Subtitle appears after main text
+            if (textProgress > 0.7) {
+                const subtitleProgress = (textProgress - 0.7) / 0.3;
+                const intensity = Math.floor(subtitleProgress * 255);
+                const subtitleColor = (intensity << 16) | (intensity << 8) | intensity; // Gray with fade-in
+                
+                this.drawText('GAME LIBRARY', this.width / 2 - 44, this.height / 2 + 20, subtitleColor);
+            }
+        }
+        
+        // Check if animation is complete
+        if (progress >= 1.0) {
+            this.startupActive = false;
+        }
+    };
+
+    // Helper function to convert HSL to RGB
+    Fixm.hslToRgb = function(h, s, l) {
+        h /= 360;
+        const a = s * Math.min(l, 1 - l);
+        const f = n => {
+            const k = (n + h / (1/12)) % 1;
+            return l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        };
+        
+        const r = Math.floor(f(0) * 255);
+        const g = Math.floor(f(8) * 255);
+        const b = Math.floor(f(4) * 255);
+        
+        return (r << 16) | (g << 8) | b;
+    };
+
     // Input functions
     Fixm.getGamepad = function(player = 0) {
         // Initialize player gamepad state if not exists
@@ -821,9 +949,21 @@
         const deltaTime = currentTime - this.lastTime;
         this.lastTime = currentTime;
 
-        // Call user update function if set
-        if (this.updateCallback) {
-            this.updateCallback(deltaTime);
+        // Handle startup animation first
+        if (this.startupActive) {
+            // Allow skipping startup animation with any input
+            const gamepad = this.getGamepad(0);
+            if (gamepad !== 0 || this.keys.size > 0) {
+                this.startupActive = false;
+            } else {
+                this.renderStartupAnimation(deltaTime);
+                this.present();
+            }
+        } else {
+            // Call user update function if set and startup is complete
+            if (this.updateCallback) {
+                this.updateCallback(deltaTime);
+            }
         }
 
         requestAnimationFrame(() => this.gameLoop());
