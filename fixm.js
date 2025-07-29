@@ -579,7 +579,15 @@
                 const img = this.querySelector('img');
                 if (img) {
                     const name = this.getAttribute('name') || 'default';
-                    Fixm.spritesheets.set(name, img);
+                    
+                    // Wait for image to load if it hasn't already
+                    if (img.complete) {
+                        Fixm.spritesheets.set(name, img);
+                    } else {
+                        img.onload = () => {
+                            Fixm.spritesheets.set(name, img);
+                        };
+                    }
                 }
             }
         }
@@ -587,6 +595,24 @@
         if (!customElements.get('fixm-spritesheet')) {
             customElements.define('fixm-spritesheet', FixmSpritesheet);
         }
+        
+        // Process any existing spritesheet elements that might already be in the DOM
+        setTimeout(() => {
+            const existingSpritesheets = document.querySelectorAll('fixm-spritesheet');
+            existingSpritesheets.forEach(element => {
+                const img = element.querySelector('img');
+                if (img) {
+                    const name = element.getAttribute('name') || 'default';
+                    if (img.complete) {
+                        Fixm.spritesheets.set(name, img);
+                    } else {
+                        img.onload = () => {
+                            Fixm.spritesheets.set(name, img);
+                        };
+                    }
+                }
+            });
+        }, 0);
     };
 
     // Input system setup
