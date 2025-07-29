@@ -943,7 +943,7 @@
     };
 
     // Audio functions
-    Fixm.channelSet = function(channel, frequency, effect = 'sine') {
+    Fixm.channelSet = function(channel, frequency, effect = 'sine', duration = 0) {
         if (!this.audioContext) return;
 
         // Stop existing oscillator if any
@@ -952,18 +952,48 @@
         }
 
         if (frequency > 0) {
-            const oscillator = this.audioContext.createOscillator();
+            let source;
             const gainNode = this.audioContext.createGain();
 
-            oscillator.type = effect;
-            oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-            gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+            if (effect === 'noise') {
+                // Create white noise using a buffer source
+                const bufferSize = this.audioContext.sampleRate * 0.1; // 0.1 second of noise
+                const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+                const output = buffer.getChannelData(0);
+                
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1; // White noise
+                }
+                
+                source = this.audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.loop = duration === 0; // Loop if no duration specified
+                
+                // Filter the noise based on frequency for different drum sounds
+                const filter = this.audioContext.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(frequency * 4, this.audioContext.currentTime);
+                
+                source.connect(filter);
+                filter.connect(gainNode);
+            } else {
+                // Regular oscillator for tonal sounds
+                source = this.audioContext.createOscillator();
+                source.type = effect;
+                source.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                source.connect(gainNode);
+            }
 
-            oscillator.connect(gainNode);
+            gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
             gainNode.connect(this.audioContext.destination);
 
-            oscillator.start();
-            this.audioChannels[channel] = oscillator;
+            source.start();
+            this.audioChannels[channel] = source;
+            
+            // Auto-stop after duration if specified
+            if (duration > 0) {
+                source.stop(this.audioContext.currentTime + duration / 1000);
+            }
         }
     };
 

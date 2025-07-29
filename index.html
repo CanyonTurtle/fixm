@@ -370,13 +370,23 @@
             Fixm.drawText(`MEASURE: ${measure}`, 10, 80, 0xFFFF00);
             
             // Channel activity indicators
-            const channels = ['BASS', 'MELODY', 'HARMONY', 'DRUMS'];
+            const channels = ['BASS', 'MELODY', 'HARMONY', 'PERCUSSION'];
             for (let i = 0; i < 4; i++) {
                 const active = isChannelActive(i, beat);
                 const color = active ? 0xFF0000 : 0x444444;
                 const y = 110 + i * 15;
                 
-                Fixm.drawText(`CH${i}: ${channels[i]}`, 10, y, color);
+                let channelText = `CH${i}: ${channels[i]}`;
+                
+                // Show drum type for channel 3
+                if (i === 3 && active) {
+                    const beatInMeasure = beat % 4;
+                    const drumType = beatInMeasure === 0 ? 'KICK' : 
+                                   beatInMeasure === 2 ? 'SNARE' : 'HIHAT';
+                    channelText = `CH${i}: ${drumType}`;
+                }
+                
+                Fixm.drawText(channelText, 10, y, color);
                 
                 // Visual bars for active channels
                 if (active) {
@@ -475,16 +485,26 @@
             
             // Play drums (after measure 4)
             if (isChannelActive(3, beat)) {
-                const drumFreq = 80 + Math.random() * 40;
-                Fixm.channelSet(3, drumFreq, drumPattern[drumIndex % drumPattern.length]);
-                drumIndex++;
+                // Different drum sounds based on beat position
+                const beatInMeasure = beat % 4;
+                let drumFreq, drumDuration;
                 
-                // Schedule drum stop using a short timeout (this is minimal and necessary for percussion effect)
-                setTimeout(() => {
-                    if (audioPlaying && gameState === 'audio') {
-                        Fixm.channelSet(3, 0);
-                    }
-                }, 100);
+                if (beatInMeasure === 0) {
+                    // Kick drum - lower frequency, longer duration
+                    drumFreq = 60;
+                    drumDuration = 150;
+                } else if (beatInMeasure === 2) {
+                    // Snare drum - mid frequency, short duration
+                    drumFreq = 200;
+                    drumDuration = 100;
+                } else {
+                    // Hi-hat - higher frequency, very short duration
+                    drumFreq = 800;
+                    drumDuration = 50;
+                }
+                
+                Fixm.channelSet(3, drumFreq, 'noise', drumDuration);
+                drumIndex++;
             }
         }
         
@@ -498,14 +518,6 @@
         function updateClear() {
             Fixm.clear(0x000000);
             Fixm.drawText('CLEAR SCREEN', 200, 120, 0x444444);
-        }
-        
-        function playSound() {
-            // Play a simple melody
-            Fixm.channelSet(0, 440, 'sine'); // A4
-            setTimeout(() => Fixm.channelSet(0, 523, 'sine'), 200); // C5
-            setTimeout(() => Fixm.channelSet(0, 659, 'sine'), 400); // E5
-            setTimeout(() => Fixm.channelSet(0, 0), 600); // Stop
         }
         
         // Fullscreen functionality
