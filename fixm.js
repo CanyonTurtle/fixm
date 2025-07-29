@@ -15,6 +15,10 @@
         width: 320,
         height: 240,
         mode: 'truecolor', // 'palette' or 'truecolor'
+        expandableWidth: false,
+        expandableHeight: false,
+        minWidth: 320,
+        minHeight: 240,
         palette: new Uint8Array(768), // 256 colors * 3 (RGB)
         buffer: null,
         audioContext: null,
@@ -140,6 +144,52 @@
         this.loopId++; // Increment to invalidate any pending requestAnimationFrame callbacks
     };
 
+    // Calculate actual resolution based on expandable settings
+    Fixm.calculateActualResolution = function() {
+        // Start with minimum dimensions
+        this.width = this.minWidth;
+        this.height = this.minHeight;
+        
+        // Get container dimensions
+        const gameContainer = document.querySelector('.game-container');
+        const container = gameContainer || document.body;
+        const containerWidth = container.clientWidth || window.innerWidth;
+        const containerHeight = container.clientHeight || window.innerHeight;
+        
+        // Calculate how much we can expand while maintaining aspect ratio
+        if (this.expandableWidth || this.expandableHeight) {
+            // Calculate the scale that would fit the container
+            const scaleX = containerWidth / this.minWidth;
+            const scaleY = containerHeight / this.minHeight;
+            
+            // Use the smaller scale to maintain aspect ratio
+            const scale = Math.min(scaleX, scaleY);
+            
+            // Only expand if we have room (scale > 1) and pixel-perfect scaling
+            if (scale >= 1) {
+                const pixelPerfectScale = Math.floor(scale);
+                
+                if (this.expandableWidth && this.expandableHeight) {
+                    // Both expandable: scale both dimensions
+                    this.width = this.minWidth * pixelPerfectScale;
+                    this.height = this.minHeight * pixelPerfectScale;
+                } else if (this.expandableWidth) {
+                    // Only width expandable: expand width to use available space
+                    const availableWidth = Math.floor(containerWidth / pixelPerfectScale) * pixelPerfectScale;
+                    const maxWidth = Math.floor(availableWidth / pixelPerfectScale);
+                    this.width = Math.max(this.minWidth, maxWidth);
+                    this.height = this.minHeight;
+                } else if (this.expandableHeight) {
+                    // Only height expandable: expand height to use available space  
+                    const availableHeight = Math.floor(containerHeight / pixelPerfectScale) * pixelPerfectScale;
+                    const maxHeight = Math.floor(availableHeight / pixelPerfectScale);
+                    this.width = this.minWidth;
+                    this.height = Math.max(this.minHeight, maxHeight);
+                }
+            }
+        }
+    };
+
     // Initialize the graphics system
     Fixm.init = function(options = {}) {
         // Preserve update callback during reinitialization
@@ -149,10 +199,15 @@
             this.teardown();
         }
 
-        this.width = options.width || 320;
-        this.height = options.height || 240;
+        this.minWidth = options.width || 320;
+        this.minHeight = options.height || 240;
         this.mode = options.mode || 'truecolor';
+        this.expandableWidth = options.expandableWidth || false;
+        this.expandableHeight = options.expandableHeight || false;
         this.showStartup = options.showStartup !== false; // Default to true unless explicitly false
+        
+        // Calculate actual resolution based on expandable settings
+        this.calculateActualResolution();
 
         // Create canvas
         this.canvas = document.createElement('canvas');
@@ -539,6 +594,20 @@
     };
 
     Fixm.resize = function() {
+        // Recalculate actual resolution based on new container size
+        const oldWidth = this.width;
+        const oldHeight = this.height;
+        this.calculateActualResolution();
+        
+        // Recreate buffer if resolution changed
+        if (oldWidth !== this.width || oldHeight !== this.height) {
+            if (this.mode === 'palette') {
+                this.buffer = new Uint8Array(this.width * this.height);
+            } else {
+                this.buffer = new Uint8Array(this.width * this.height * 4);
+            }
+        }
+
         const container = this.canvas.parentElement || document.body;
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;

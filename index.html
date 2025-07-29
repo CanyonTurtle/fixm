@@ -145,6 +145,8 @@
         let configCurrentHeight = 240;
         let configCurrentMode = 'truecolor';
         let configShowStartup = true;
+        let configExpandableWidth = false;
+        let configExpandableHeight = false;
         
         // Menu items
         const menuItems = [
@@ -529,11 +531,11 @@
             const gamepad = Fixm.getGamepad(0);
             if (frame - lastInputTime > 10) {
                 if (gamepad & Fixm.BUTTON_UP) {
-                    configSelectedItem = (configSelectedItem - 1 + 6) % 6;
+                    configSelectedItem = (configSelectedItem - 1 + 8) % 8;
                     lastInputTime = frame;
                 }
                 if (gamepad & Fixm.BUTTON_DOWN) {
-                    configSelectedItem = (configSelectedItem + 1) % 6;
+                    configSelectedItem = (configSelectedItem + 1) % 8;
                     lastInputTime = frame;
                 }
                 if (gamepad & Fixm.BUTTON_LEFT) {
@@ -545,7 +547,7 @@
                     lastInputTime = frame;
                 }
                 if (gamepad & Fixm.BUTTON_A) {
-                    if (configSelectedItem === 5) { // Apply button
+                    if (configSelectedItem === 7) { // Apply button
                         applyConfig();
                     }
                     lastInputTime = frame;
@@ -559,6 +561,8 @@
             const configItems = [
                 { name: 'WIDTH', value: configCurrentWidth },
                 { name: 'HEIGHT', value: configCurrentHeight },
+                { name: 'EXPAND WIDTH', value: configExpandableWidth ? 'ON' : 'OFF' },
+                { name: 'EXPAND HEIGHT', value: configExpandableHeight ? 'ON' : 'OFF' },
                 { name: 'MODE', value: configCurrentMode },
                 { name: 'STARTUP', value: configShowStartup ? 'ON' : 'OFF' },
                 { name: '', value: '' }, // Separator
@@ -570,13 +574,13 @@
                 const isSelected = i === configSelectedItem;
                 const color = isSelected ? 0xFFFF00 : 0xCCCCCC;
                 
-                if (i === 4) continue; // Skip separator line
+                if (i === 6) continue; // Skip separator line
                 
                 if (isSelected) {
                     Fixm.drawText('>', 30, y, 0xFFFF00);
                 }
                 
-                if (i === 5) {
+                if (i === 7) {
                     // Apply button
                     const buttonColor = isSelected ? 0x00FF00 : 0x888888;
                     Fixm.drawText(configItems[i].name, 50, y, buttonColor);
@@ -585,7 +589,7 @@
                     Fixm.drawText(configItems[i].name + ':', 50, y, color);
                     Fixm.drawText(configItems[i].value.toString(), 140, y, color);
                     
-                    if (isSelected && i < 4) {
+                    if (isSelected && i < 6) {
                         Fixm.drawText('< >', 200, y, 0xFF8800);
                     }
                 }
@@ -617,14 +621,22 @@
                     configCurrentHeight = heights[heightIndex];
                     break;
                     
-                case 2: // Mode
+                case 2: // Expandable Width
+                    configExpandableWidth = !configExpandableWidth;
+                    break;
+                    
+                case 3: // Expandable Height
+                    configExpandableHeight = !configExpandableHeight;
+                    break;
+                    
+                case 4: // Mode
                     const modes = ['palette', 'truecolor'];
                     let modeIndex = modes.indexOf(configCurrentMode);
                     modeIndex = (modeIndex + direction + modes.length) % modes.length;
                     configCurrentMode = modes[modeIndex];
                     break;
                     
-                case 3: // Startup
+                case 5: // Startup
                     configShowStartup = !configShowStartup;
                     break;
             }
@@ -641,6 +653,8 @@
             Fixm.init({
                 width: configCurrentWidth,
                 height: configCurrentHeight,
+                expandableWidth: configExpandableWidth,
+                expandableHeight: configExpandableHeight,
                 mode: configCurrentMode,
                 showStartup: configShowStartup
             });
