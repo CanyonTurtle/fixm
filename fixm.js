@@ -80,10 +80,17 @@
         this.canvas = document.createElement('canvas');
         this.canvas.style.imageRendering = 'pixelated';
         this.canvas.style.imageRendering = 'crisp-edges';
-        this.canvas.style.width = '100%';
-        this.canvas.style.height = '100%';
-        this.canvas.style.objectFit = 'contain';
-        document.body.appendChild(this.canvas);
+        
+        // Append to game container if it exists, otherwise body
+        const gameContainer = document.querySelector('.game-container');
+        if (gameContainer) {
+            gameContainer.appendChild(this.canvas);
+        } else {
+            this.canvas.style.width = '100%';
+            this.canvas.style.height = '100%';
+            this.canvas.style.objectFit = 'contain';
+            document.body.appendChild(this.canvas);
+        }
 
         // Get WebGL context
         this.gl = this.canvas.getContext('webgl') || this.canvas.getContext('experimental-webgl');
@@ -409,17 +416,21 @@
         const containerWidth = container.clientWidth;
         const containerHeight = container.clientHeight;
 
+        // Calculate scale for CSS display
         const scale = Math.floor(Math.min(containerWidth / this.width, containerHeight / this.height));
-        const scaledWidth = this.width * scale;
-        const scaledHeight = this.height * scale;
+        const displayWidth = this.width * scale;
+        const displayHeight = this.height * scale;
 
-        this.canvas.width = scaledWidth;
-        this.canvas.height = scaledHeight;
-        this.canvas.style.width = scaledWidth + 'px';
-        this.canvas.style.height = scaledHeight + 'px';
+        // Set canvas internal resolution to game resolution
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+        
+        // Set CSS display size for scaling
+        this.canvas.style.width = displayWidth + 'px';
+        this.canvas.style.height = displayHeight + 'px';
 
         if (this.gl) {
-            this.gl.viewport(0, 0, scaledWidth, scaledHeight);
+            this.gl.viewport(0, 0, this.width, this.height);
         }
     };
 
