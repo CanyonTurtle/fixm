@@ -130,6 +130,15 @@
         let playerY = 110;
         let lastInputTime = 0;
         
+        // Audio demo variables
+        let audioStartTime = 0;
+        let audioPlaying = false;
+        let lastBeat = -1;
+        let bassIndex = 0;
+        let melodyIndex = 0;
+        let harmonyIndex = 0;
+        let drumIndex = 0;
+        
         // Menu items
         const menuItems = [
             { name: 'Rectangles Demo', state: 'rects' },
@@ -162,14 +171,16 @@
                             playerX = 150;
                             playerY = 110;
                         }
-                        if (gameState === 'audio') {
-                            playSound();
-                        }
                         lastInputTime = frame;
                     }
                 } else {
                     // Return to menu from any demo
                     if (gamepad & (Fixm.BUTTON_X | Fixm.BUTTON_Y)) {
+                        // Stop audio when leaving audio demo
+                        if (gameState === 'audio') {
+                            audioPlaying = false;
+                            stopAllChannels();
+                        }
                         gameState = 'menu';
                         lastInputTime = frame;
                     }
@@ -192,6 +203,9 @@
                     break;
                 case 'input':
                     updateInput();
+                    break;
+                case 'audio':
+                    updateAudio();
                     break;
                 case 'clear':
                     updateClear();
@@ -323,6 +337,163 @@
             Fixm.drawText('MOVE WITH WASD ARROWS', 140, 215, 0xCCCCCC);
         }
         
+        
+        function updateAudio() {
+            Fixm.clear(0x001122);
+            
+            // Start audio sequence when entering audio demo
+            if (!audioPlaying) {
+                audioPlaying = true;
+                audioStartTime = performance.now();
+                lastBeat = -1;
+                bassIndex = 0;
+                melodyIndex = 0;
+                harmonyIndex = 0;
+                drumIndex = 0;
+            }
+            
+            // Calculate song position (in beats, assuming 120 BPM)
+            const songTime = (performance.now() - audioStartTime) / 1000; // seconds
+            const beat = Math.floor(songTime * 2); // 2 beats per second (120 BPM)
+            const measure = Math.floor(beat / 4);
+            
+            // Play notes when beat changes
+            if (beat !== lastBeat && beat >= 0) {
+                playNotesForBeat(beat);
+                lastBeat = beat;
+            }
+            
+            // Visual display
+            Fixm.drawText('AUDIO DEMO', 200, 20, 0xFFFFFF);
+            Fixm.drawText(`TIME: ${songTime.toFixed(1)}S`, 10, 50, 0x00FFFF);
+            Fixm.drawText(`BEAT: ${beat}`, 10, 65, 0x00FF00);
+            Fixm.drawText(`MEASURE: ${measure}`, 10, 80, 0xFFFF00);
+            
+            // Channel activity indicators
+            const channels = ['BASS', 'MELODY', 'HARMONY', 'DRUMS'];
+            for (let i = 0; i < 4; i++) {
+                const active = isChannelActive(i, beat);
+                const color = active ? 0xFF0000 : 0x444444;
+                const y = 110 + i * 15;
+                
+                Fixm.drawText(`CH${i}: ${channels[i]}`, 10, y, color);
+                
+                // Visual bars for active channels
+                if (active) {
+                    const barWidth = Math.floor(Math.sin(frame * 0.2 + i) * 20 + 40);
+                    Fixm.drawRect(120, y - 2, barWidth, 10, color);
+                }
+            }
+            
+            // Song structure visualization
+            const structureY = 190;
+            Fixm.drawText('SONG STRUCTURE:', 10, structureY, 0xCCCCCC);
+            const sections = ['INTRO', 'VERSE', 'CHORUS', 'VERSE', 'CHORUS', 'OUTRO'];
+            const currentSection = Math.min(Math.floor(measure / 4), sections.length - 1);
+            
+            for (let i = 0; i < sections.length; i++) {
+                const color = i === currentSection ? 0xFFFF00 : 0x666666;
+                const x = 10 + i * 45;
+                Fixm.drawText(sections[i].substring(0, 4), x, structureY + 15, color);
+            }
+            
+            // Restart song after it ends (24 measures = ~48 seconds)
+            if (measure >= 24) {
+                audioPlaying = false;
+                stopAllChannels();
+            }
+        }
+        
+        function isChannelActive(channel, beat) {
+            const measure = Math.floor(beat / 4);
+            const beatInMeasure = beat % 4;
+            
+            switch (channel) {
+                case 0: // Bass - plays on beats 0 and 2
+                    return measure >= 1 && (beatInMeasure === 0 || beatInMeasure === 2);
+                case 1: // Melody - plays most of the time after intro
+                    return measure >= 2;
+                case 2: // Harmony - plays during chorus sections
+                    return (measure >= 8 && measure < 16) || (measure >= 20 && measure < 24);
+                case 3: // Drums - plays steady after intro
+                    return measure >= 4 && beatInMeasure % 1 === 0;
+                default:
+                    return false;
+            }
+        }
+        
+        function playNotesForBeat(beat) {
+            const notes = {
+                C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23,
+                G4: 392.00, A4: 440.00, B4: 493.88, C5: 523.25,
+                D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99
+            };
+            
+            // Bass line pattern (Channel 0)
+            const bassPattern = [notes.C4, notes.C4, notes.F4, notes.F4];
+            
+            // Melody pattern (Channel 1) 
+            const melodyPattern = [
+                notes.C5, notes.D5, notes.E5, notes.F5,
+                notes.E5, notes.D5, notes.C5, notes.G4,
+                notes.A4, notes.B4, notes.C5, notes.D5,
+                notes.C5, notes.B4, notes.A4, notes.G4
+            ];
+            
+            // Harmony pattern (Channel 2)
+            const harmonyPattern = [notes.E4, notes.G4, notes.C5, notes.G4];
+            
+            // Drum pattern (Channel 3) - using different waveforms as percussion
+            const drumPattern = ['square', 'sawtooth', 'triangle', 'sine'];
+            
+            const measure = Math.floor(beat / 4);
+            
+            // End song after 24 measures
+            if (measure >= 24) {
+                audioPlaying = false;
+                stopAllChannels();
+                return;
+            }
+            
+            // Play bass on beats 0 and 2 of each measure (after measure 1)
+            if (isChannelActive(0, beat)) {
+                Fixm.channelSet(0, bassPattern[bassIndex % bassPattern.length], 'sine');
+                bassIndex++;
+            }
+            
+            // Play melody (after measure 2)
+            if (isChannelActive(1, beat)) {
+                Fixm.channelSet(1, melodyPattern[melodyIndex % melodyPattern.length], 'square');
+                melodyIndex++;
+            }
+            
+            // Play harmony during chorus sections
+            if (isChannelActive(2, beat)) {
+                Fixm.channelSet(2, harmonyPattern[harmonyIndex % harmonyPattern.length], 'triangle');
+                harmonyIndex++;
+            }
+            
+            // Play drums (after measure 4)
+            if (isChannelActive(3, beat)) {
+                const drumFreq = 80 + Math.random() * 40;
+                Fixm.channelSet(3, drumFreq, drumPattern[drumIndex % drumPattern.length]);
+                drumIndex++;
+                
+                // Schedule drum stop using a short timeout (this is minimal and necessary for percussion effect)
+                setTimeout(() => {
+                    if (audioPlaying && gameState === 'audio') {
+                        Fixm.channelSet(3, 0);
+                    }
+                }, 100);
+            }
+        }
+        
+        function stopAllChannels() {
+            // Stop all audio channels
+            for (let i = 0; i < 4; i++) {
+                Fixm.channelSet(i, 0);
+            }
+        }
         
         function updateClear() {
             Fixm.clear(0x000000);
