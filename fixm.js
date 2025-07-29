@@ -36,6 +36,9 @@
         startupActive: false,
         startupTime: 0,
         startupDuration: 3000, // 3 seconds
+        startupFadeOut: false,
+        startupFadeTime: 0,
+        startupFadeDuration: 800, // 800ms fade out
         
         // Input system
         keys: new Set(),
@@ -124,6 +127,8 @@
         if (this.showStartup) {
             this.startupActive = true;
             this.startupTime = 0;
+            this.startupFadeOut = false;
+            this.startupFadeTime = 0;
             this.playStartupSound();
         }
         
@@ -725,23 +730,37 @@
         this.startupTime += deltaTime;
         const progress = this.startupTime / this.startupDuration;
         
-        // Clear with animated background
-        const bgColor = Math.floor(Math.sin(this.startupTime * 0.005) * 32 + 64);
-        this.clear((bgColor << 16) | (bgColor << 8) | (bgColor * 2));
+        // Clear with subtle gradient background (no flashing)
+        const bgBase = 16; // Dark blue base
+        const bgVariation = Math.floor(Math.sin(this.startupTime * 0.001) * 8 + 8); // Gentle variation
+        this.clear((bgBase << 16) | ((bgBase + bgVariation) << 8) | (bgBase * 3));
         
-        // Draw animated particles
+        // Draw animated particles (avoiding text area)
         for (let i = 0; i < 20; i++) {
             const angle = (this.startupTime * 0.002 + i * 0.314) % (Math.PI * 2);
-            const radius = 40 + Math.sin(this.startupTime * 0.003 + i) * 20;
+            
+            // Create two radius ranges: inner ring and outer ring to avoid text
+            const isOuterRing = i % 2 === 0;
+            const baseRadius = isOuterRing ? 80 : 25; // Outer or inner ring
+            const radiusVariation = Math.sin(this.startupTime * 0.003 + i) * 10;
+            const radius = baseRadius + radiusVariation;
+            
             const x = this.width / 2 + Math.cos(angle) * radius;
             const y = this.height / 2 + Math.sin(angle) * radius;
-            const size = 3 + Math.sin(this.startupTime * 0.004 + i) * 2;
+            const size = 2 + Math.sin(this.startupTime * 0.004 + i) * 1.5;
             
-            // Colorful particles
-            const hue = (i * 60 + this.startupTime * 0.1) % 360;
-            const color = this.hslToRgb(hue, 0.8, 0.6);
+            // Skip particles that would overlap with text area (center region)
+            const textCenterX = this.width / 2;
+            const textCenterY = this.height / 2;
+            const distanceFromTextCenter = Math.sqrt((x - textCenterX) ** 2 + (y - textCenterY) ** 2);
             
-            this.drawRect(Math.floor(x), Math.floor(y), Math.floor(size), Math.floor(size), color);
+            if (distanceFromTextCenter > 35) { // Only draw if outside text area
+                // Colorful particles with softer colors
+                const hue = (i * 45 + this.startupTime * 0.08) % 360;
+                const color = this.hslToRgb(hue, 0.7, 0.5);
+                
+                this.drawRect(Math.floor(x), Math.floor(y), Math.floor(size), Math.floor(size), color);
+            }
         }
         
         // Animate FIXM text
@@ -796,9 +815,38 @@
             }
         }
         
-        // Check if animation is complete
-        if (progress >= 1.0) {
-            this.startupActive = false;
+        // Check if animation is complete or should start fade-out
+        if (progress >= 1.0 && !this.startupFadeOut) {
+            this.startupFadeOut = true;
+            this.startupFadeTime = 0;
+        }
+        
+        // Handle fade-out phase
+        if (this.startupFadeOut) {
+            this.startupFadeTime += deltaTime;
+            const fadeProgress = this.startupFadeTime / this.startupFadeDuration;
+            
+            if (fadeProgress >= 1.0) {
+                // Fade-out complete, end animation
+                this.startupActive = false;
+                this.startupFadeOut = false;
+                this.startupFadeTime = 0;
+            } else {
+                // Apply fade-out overlay
+                const alpha = Math.floor(fadeProgress * 255);
+                const fadeColor = (alpha << 24) | 0x000000; // Black with increasing alpha
+                
+                // Draw fade overlay by darkening all pixels
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        const offset = (y * this.width + x) * 4;
+                        const fadeAmount = 1.0 - fadeProgress;
+                        this.buffer[offset] = Math.floor(this.buffer[offset] * fadeAmount);     // R
+                        this.buffer[offset + 1] = Math.floor(this.buffer[offset + 1] * fadeAmount); // G
+                        this.buffer[offset + 2] = Math.floor(this.buffer[offset + 2] * fadeAmount); // B
+                    }
+                }
+            }
         }
     };
 
@@ -960,6 +1008,8 @@
             const gamepad = this.getGamepad(0);
             if (gamepad !== 0 || this.keys.size > 0) {
                 this.startupActive = false;
+                this.startupFadeOut = false;
+                this.startupFadeTime = 0;
             } else {
                 this.renderStartupAnimation(deltaTime);
                 this.present();
