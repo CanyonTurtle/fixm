@@ -41,11 +41,9 @@
                 overflow: hidden;
             }
             canvas {
-                max-width: 100vw;
-                max-height: 100vh;
+                width: 100vw !important;
+                height: 100vh !important;
                 object-fit: contain;
-                position: relative;
-                z-index: 1;
             }
         }
         
@@ -120,8 +118,8 @@
         Fixm.init({
             width: 320,
             height: 240,
-            mode: 'truecolor'
-            // showStartup: false  // Uncomment to disable startup animation
+            mode: 'truecolor',
+            showStartup: false  // Temporarily disable startup animation for testing
         });
         
         // Game state
