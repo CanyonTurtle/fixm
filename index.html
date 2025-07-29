@@ -28,26 +28,6 @@
             outline: 0px;
         }
         
-        /* Desktop: max 800x600 centered */
-        @media (min-width: 801px) {
-            canvas {
-                /* max-width: 800px;
-                max-height: 800px; */
-            }
-        }
-        
-        /* Mobile: fill screen with proper aspect */
-        @media (max-width: 800px) {
-            body {
-                overflow: hidden;
-            }
-            canvas {
-                /* JavaScript handles all sizing to maintain square pixels */
-                max-width: 100vw;
-                max-height: 100vh;
-            }
-        }
-        
         /* Fullscreen toggle button */
         .fullscreen-toggle {
             position: fixed;
