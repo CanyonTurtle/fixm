@@ -139,6 +139,13 @@
         let harmonyIndex = 0;
         let drumIndex = 0;
         
+        // Config demo variables
+        let configSelectedItem = 0;
+        let configCurrentWidth = 320;
+        let configCurrentHeight = 240;
+        let configCurrentMode = 'truecolor';
+        let configShowStartup = true;
+        
         // Menu items
         const menuItems = [
             { name: 'Rectangles Demo', state: 'rects' },
@@ -146,7 +153,7 @@
             { name: 'Animation Demo', state: 'animate' },
             { name: 'Input Demo', state: 'input' },
             { name: 'Audio Test', state: 'audio' },
-            { name: 'Clear Screen', state: 'clear' }
+            { name: 'Config Demo', state: 'config' }
         ];
         
         // Set up the main update loop
@@ -207,8 +214,8 @@
                 case 'audio':
                     updateAudio();
                     break;
-                case 'clear':
-                    updateClear();
+                case 'config':
+                    updateConfig();
                     break;
             }
             
@@ -515,9 +522,133 @@
             }
         }
         
-        function updateClear() {
-            Fixm.clear(0x000000);
-            Fixm.drawText('CLEAR SCREEN', 200, 120, 0x444444);
+        function updateConfig() {
+            Fixm.clear(0x002211);
+            
+            // Handle input for config menu
+            const gamepad = Fixm.getGamepad(0);
+            if (frame - lastInputTime > 10) {
+                if (gamepad & Fixm.BUTTON_UP) {
+                    configSelectedItem = (configSelectedItem - 1 + 6) % 6;
+                    lastInputTime = frame;
+                }
+                if (gamepad & Fixm.BUTTON_DOWN) {
+                    configSelectedItem = (configSelectedItem + 1) % 6;
+                    lastInputTime = frame;
+                }
+                if (gamepad & Fixm.BUTTON_LEFT) {
+                    adjustConfigValue(-1);
+                    lastInputTime = frame;
+                }
+                if (gamepad & Fixm.BUTTON_RIGHT) {
+                    adjustConfigValue(1);
+                    lastInputTime = frame;
+                }
+                if (gamepad & Fixm.BUTTON_A) {
+                    if (configSelectedItem === 5) { // Apply button
+                        applyConfig();
+                    }
+                    lastInputTime = frame;
+                }
+            }
+            
+            // Title
+            Fixm.drawText('FIXM CONFIGURATION', 170, 20, 0xFFFFFF);
+            
+            // Config options
+            const configItems = [
+                { name: 'WIDTH', value: configCurrentWidth },
+                { name: 'HEIGHT', value: configCurrentHeight },
+                { name: 'MODE', value: configCurrentMode },
+                { name: 'STARTUP', value: configShowStartup ? 'ON' : 'OFF' },
+                { name: '', value: '' }, // Separator
+                { name: 'APPLY CONFIG', value: '' }
+            ];
+            
+            for (let i = 0; i < configItems.length; i++) {
+                const y = 60 + i * 18;
+                const isSelected = i === configSelectedItem;
+                const color = isSelected ? 0xFFFF00 : 0xCCCCCC;
+                
+                if (i === 4) continue; // Skip separator line
+                
+                if (isSelected) {
+                    Fixm.drawText('>', 30, y, 0xFFFF00);
+                }
+                
+                if (i === 5) {
+                    // Apply button
+                    const buttonColor = isSelected ? 0x00FF00 : 0x888888;
+                    Fixm.drawText(configItems[i].name, 50, y, buttonColor);
+                } else {
+                    // Regular config item
+                    Fixm.drawText(configItems[i].name + ':', 50, y, color);
+                    Fixm.drawText(configItems[i].value.toString(), 140, y, color);
+                    
+                    if (isSelected && i < 4) {
+                        Fixm.drawText('< >', 200, y, 0xFF8800);
+                    }
+                }
+            }
+            
+            // Instructions
+            Fixm.drawText('UP DOWN: SELECT ITEM', 20, 180, 0x888888);
+            Fixm.drawText('LEFT RIGHT: CHANGE VALUE', 20, 195, 0x888888);
+            Fixm.drawText('A: APPLY  X Y: BACK TO MENU', 20, 210, 0x888888);
+            
+            // Current settings display
+            Fixm.drawText('CURRENT SETTINGS:', 20, 230, 0x666666);
+            Fixm.drawText(`${Fixm.width}X${Fixm.height} ${Fixm.mode.toUpperCase()}`, 160, 230, 0x666666);
+        }
+        
+        function adjustConfigValue(direction) {
+            switch (configSelectedItem) {
+                case 0: // Width
+                    const widths = [160, 240, 320, 480, 640, 800];
+                    let widthIndex = widths.indexOf(configCurrentWidth);
+                    widthIndex = Math.max(0, Math.min(widths.length - 1, widthIndex + direction));
+                    configCurrentWidth = widths[widthIndex];
+                    break;
+                    
+                case 1: // Height
+                    const heights = [120, 180, 240, 360, 480, 600];
+                    let heightIndex = heights.indexOf(configCurrentHeight);
+                    heightIndex = Math.max(0, Math.min(heights.length - 1, heightIndex + direction));
+                    configCurrentHeight = heights[heightIndex];
+                    break;
+                    
+                case 2: // Mode
+                    const modes = ['palette', 'truecolor'];
+                    let modeIndex = modes.indexOf(configCurrentMode);
+                    modeIndex = (modeIndex + direction + modes.length) % modes.length;
+                    configCurrentMode = modes[modeIndex];
+                    break;
+                    
+                case 3: // Startup
+                    configShowStartup = !configShowStartup;
+                    break;
+            }
+        }
+        
+        function applyConfig() {
+            // Stop current audio if playing
+            if (audioPlaying) {
+                audioPlaying = false;
+                stopAllChannels();
+            }
+            
+            // Reinitialize Fixm with new settings (teardown is handled automatically)
+            Fixm.init({
+                width: configCurrentWidth,
+                height: configCurrentHeight,
+                mode: configCurrentMode,
+                showStartup: configShowStartup
+            });
+            
+            // If startup is disabled, go back to menu
+            if (!configShowStartup) {
+                gameState = 'menu';
+            }
         }
         
         // Fullscreen functionality

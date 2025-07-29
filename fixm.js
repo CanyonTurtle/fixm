@@ -30,6 +30,7 @@
         updateCallback: null,
         running: false,
         lastTime: 0,
+        loopId: 0,
         
         // Startup animation system
         showStartup: true,
@@ -81,9 +82,72 @@
         }
     };
 
+    // Teardown existing instance
+    Fixm.teardown = function() {
+        if (!this.initialized) return;
+
+        // Stop event loop
+        this.stopEventLoop();
+
+        // Stop all audio channels
+        for (let channel in this.audioChannels) {
+            if (this.audioChannels[channel]) {
+                this.audioChannels[channel].stop();
+            }
+        }
+        this.audioChannels = {};
+
+        // Close audio context
+        if (this.audioContext && this.audioContext.state !== 'closed') {
+            this.audioContext.close();
+        }
+
+        // Remove canvas from DOM
+        if (this.canvas && this.canvas.parentNode) {
+            this.canvas.parentNode.removeChild(this.canvas);
+        }
+
+        // Remove touch controls
+        if (this.touchControls && this.touchControls.parentNode) {
+            this.touchControls.parentNode.removeChild(this.touchControls);
+        }
+
+        // Clear WebGL resources
+        if (this.gl) {
+            // Delete WebGL resources
+            if (this.texture) this.gl.deleteTexture(this.texture);
+            if (this.framebuffer) this.gl.deleteFramebuffer(this.framebuffer);
+            if (this.program) this.gl.deleteProgram(this.program);
+        }
+
+        // Reset state
+        this.canvas = null;
+        this.gl = null;
+        this.framebuffer = null;
+        this.texture = null;
+        this.program = null;
+        this.buffer = null;
+        this.audioContext = null;
+        this.touchControls = null;
+        this.keys.clear();
+        this.gamepads = {};
+        this.spritesheets.clear();
+        this.running = false;
+        this.initialized = false;
+        this.startupActive = false;
+        this.startupFadeOut = false;
+        this.updateCallback = null;
+        this.loopId++; // Increment to invalidate any pending requestAnimationFrame callbacks
+    };
+
     // Initialize the graphics system
     Fixm.init = function(options = {}) {
-        if (this.initialized) return;
+        // Preserve update callback during reinitialization
+        let preservedUpdateCallback = null;
+        if (this.initialized) {
+            preservedUpdateCallback = this.updateCallback;
+            this.teardown();
+        }
 
         this.width = options.width || 320;
         this.height = options.height || 240;
@@ -132,7 +196,15 @@
             this.playStartupSound();
         }
         
-        this.startEventLoop();
+        // Restore update callback if we're reinitializing
+        if (preservedUpdateCallback) {
+            this.updateCallback = preservedUpdateCallback;
+        }
+        
+        // Only start event loop if we have an update callback
+        if (this.updateCallback) {
+            this.startEventLoop();
+        }
     };
 
     Fixm.setupWebGL = function() {
@@ -1046,6 +1118,9 @@
     Fixm.gameLoop = function() {
         if (!this.running) return;
 
+        // Capture current loop ID to detect if we've been invalidated
+        const currentLoopId = this.loopId;
+
         const currentTime = performance.now();
         const deltaTime = currentTime - this.lastTime;
         this.lastTime = currentTime;
@@ -1069,7 +1144,12 @@
             }
         }
 
-        requestAnimationFrame(() => this.gameLoop());
+        requestAnimationFrame(() => {
+            // Only continue if we haven't been invalidated by a teardown
+            if (currentLoopId === this.loopId) {
+                this.gameLoop();
+            }
+        });
     };
 
     // Auto-initialize when DOM is ready
