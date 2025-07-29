@@ -122,6 +122,12 @@
             styleElement.parentNode.removeChild(styleElement);
         }
 
+        // Remove fullscreen button
+        const fullscreenButton = document.getElementById('fullscreen-toggle');
+        if (fullscreenButton && fullscreenButton.parentNode) {
+            fullscreenButton.parentNode.removeChild(fullscreenButton);
+        }
+
         // Clear WebGL resources
         if (this.gl) {
             // Delete WebGL resources
@@ -271,6 +277,127 @@
         `;
 
         document.head.appendChild(styleElement);
+        
+        // Create fullscreen button now that styles are loaded
+        this.createFullscreenButton();
+    };
+
+    // Create fullscreen toggle button programmatically
+    Fixm.createFullscreenButton = function() {
+        // Remove existing fullscreen button if it exists
+        const existingButton = document.querySelector('.fullscreen-toggle');
+        if (existingButton && existingButton.parentNode) {
+            existingButton.parentNode.removeChild(existingButton);
+        }
+
+        // Create fullscreen button
+        const fullscreenButton = document.createElement('div');
+        fullscreenButton.className = 'fullscreen-toggle';
+        fullscreenButton.id = 'fullscreen-toggle';
+        fullscreenButton.title = 'Toggle Fullscreen';
+
+        // Create SVG icon
+        fullscreenButton.innerHTML = `
+            <svg viewBox="0 0 24 24">
+                <path id="fullscreen-icon" d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+            </svg>
+        `;
+
+        // Add to document body
+        document.body.appendChild(fullscreenButton);
+
+        // Set up fullscreen functionality
+        this.setupFullscreenEvents();
+    };
+
+    // Set up fullscreen event listeners
+    Fixm.setupFullscreenEvents = function() {
+        let isFullscreen = false;
+
+        const toggleFullscreen = () => {
+            if (!isFullscreen) {
+                // Enter fullscreen
+                const element = document.documentElement;
+                if (element.requestFullscreen) {
+                    element.requestFullscreen();
+                } else if (element.webkitRequestFullscreen) {
+                    element.webkitRequestFullscreen();
+                } else if (element.mozRequestFullScreen) {
+                    element.mozRequestFullScreen();
+                } else if (element.msRequestFullscreen) {
+                    element.msRequestFullscreen();
+                }
+            } else {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        };
+
+        const updateFullscreenState = () => {
+            isFullscreen = !!(document.fullscreenElement || 
+                             document.webkitFullscreenElement || 
+                             document.mozFullScreenElement || 
+                             document.msFullscreenElement);
+            
+            document.body.classList.toggle('fullscreen-active', isFullscreen);
+            
+            // Update icon
+            const icon = document.getElementById('fullscreen-icon');
+            if (icon) {
+                if (isFullscreen) {
+                    // Exit fullscreen icon
+                    icon.setAttribute('d', 'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z');
+                } else {
+                    // Enter fullscreen icon
+                    icon.setAttribute('d', 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z');
+                }
+            }
+        };
+
+        // Fullscreen event listeners
+        const fullscreenButton = document.getElementById('fullscreen-toggle');
+        if (fullscreenButton) {
+            fullscreenButton.addEventListener('click', toggleFullscreen);
+            fullscreenButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                toggleFullscreen();
+            });
+        }
+
+        // Listen for fullscreen changes
+        document.addEventListener('fullscreenchange', updateFullscreenState);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenState);
+        document.addEventListener('mozfullscreenchange', updateFullscreenState);
+        document.addEventListener('MSFullscreenChange', updateFullscreenState);
+
+        // Escape key handling
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && isFullscreen) {
+                toggleFullscreen();
+            }
+        });
+
+        // Handle Android back button
+        window.addEventListener('popstate', (e) => {
+            if (isFullscreen) {
+                e.preventDefault();
+                toggleFullscreen();
+                history.pushState(null, null, location.href);
+            }
+        });
+
+        // Push state to handle back button on mobile
+        if (history.pushState) {
+            history.pushState(null, null, location.href);
+        }
     };
 
     // Initialize the graphics system
