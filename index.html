@@ -206,51 +206,71 @@
         });
         
         function updateMenu() {
+            const screen = Fixm.getScreenSize();
             Fixm.clear(0x001133);
             
-            // Title
-            Fixm.drawText('FIXM GAME LIBRARY', 70, 20, 0xFFFFFF);
-            Fixm.drawText('DEMO MENU', 110, 35, 0xCCCCCC);
+            // Title - centered horizontally
+            const titleX = Math.floor((screen.width - 'FIXM GAME LIBRARY'.length * 8) / 2);
+            const subtitleX = Math.floor((screen.width - 'DEMO MENU'.length * 8) / 2);
+            Fixm.drawText('FIXM GAME LIBRARY', titleX, 20, 0xFFFFFF);
+            Fixm.drawText('DEMO MENU', subtitleX, 35, 0xCCCCCC);
             
-            // Menu items
+            // Menu items - centered horizontally
+            const menuStartY = Math.floor(screen.height * 0.25);
             for (let i = 0; i < menuItems.length; i++) {
-                const y = 70 + i * 15;
+                const y = menuStartY + i * 15;
                 const color = i === selectedMenuItem ? 0xFFFF00 : 0xAAAAAAA;
+                const textX = Math.floor((screen.width - menuItems[i].name.length * 8) / 2);
                 
                 if (i === selectedMenuItem) {
-                    Fixm.drawText('>', 60, y, 0xFFFF00);
+                    Fixm.drawText('>', textX - 20, y, 0xFFFF00);
                 }
                 
-                Fixm.drawText(menuItems[i].name.toUpperCase(), 80, y, color);
+                Fixm.drawText(menuItems[i].name.toUpperCase(), textX, y, color);
             }
             
-            // Instructions
-            Fixm.drawText('UP DOWN A B TO SELECT', 80, 200, 0x888888);
-            Fixm.drawText('X Y TO RETURN TO MENU', 85, 215, 0x888888);
+            // Instructions - bottom of screen, centered
+            const instructY1 = screen.height - 40;
+            const instructY2 = screen.height - 25;
+            const instruct1X = Math.floor((screen.width - 'UP DOWN A B TO SELECT'.length * 8) / 2);
+            const instruct2X = Math.floor((screen.width - 'X Y TO RETURN TO MENU'.length * 8) / 2);
+            Fixm.drawText('UP DOWN A B TO SELECT', instruct1X, instructY1, 0x888888);
+            Fixm.drawText('X Y TO RETURN TO MENU', instruct2X, instructY2, 0x888888);
         }
 
         function updateRects() {
+            const screen = Fixm.getScreenSize();
             Fixm.clear(0x001122);
             
-            // Draw some colorful rectangles
-            Fixm.drawRect(10, 10, 50, 30, 0xFF0000); // Red
-            Fixm.drawRect(70, 15, 40, 25, 0x00FF00); // Green
-            Fixm.drawRect(120, 20, 35, 35, 0x0000FF); // Blue
-            Fixm.drawRect(200, 10, 60, 20, 0xFFFF00); // Yellow
-            Fixm.drawRect(50, 60, 80, 40, 0xFF00FF); // Magenta
+            // Draw some colorful rectangles - positioned relative to screen size
+            const rectSize = Math.min(screen.width, screen.height) / 8;
+            Fixm.drawRect(10, 10, rectSize, rectSize * 0.6, 0xFF0000); // Red
+            Fixm.drawRect(rectSize + 20, 15, rectSize * 0.8, rectSize * 0.5, 0x00FF00); // Green
+            Fixm.drawRect(rectSize * 2 + 30, 20, rectSize * 0.7, rectSize * 0.7, 0x0000FF); // Blue
+            Fixm.drawRect(screen.width - rectSize - 10, 10, rectSize, rectSize * 0.4, 0xFFFF00); // Yellow
+            Fixm.drawRect(50, 60, rectSize * 1.6, rectSize * 0.8, 0xFF00FF); // Magenta
             
-            // Draw a gradient-like pattern
-            for (let x = 0; x < 160; x++) {
-                for (let y = 120; y < 140; y++) {
-                    const color = (x << 16) | ((y - 120) * 12 << 8) | 128;
-                    Fixm.setPixel(x, y, color);
+            // Draw a gradient-like pattern - centered and scaled
+            const gradientWidth = Math.floor(screen.width * 0.5);
+            const gradientHeight = 20;
+            const gradientX = Math.floor((screen.width - gradientWidth) / 2);
+            const gradientY = Math.floor(screen.height * 0.5);
+            
+            for (let x = 0; x < gradientWidth; x++) {
+                for (let y = 0; y < gradientHeight; y++) {
+                    const color = (x << 16) | (y * 12 << 8) | 128;
+                    Fixm.setPixel(gradientX + x, gradientY + y, color);
                 }
             }
             
-            Fixm.drawText('RECTANGLES DEMO', 180, 180, 0xFFFFFF);
+            // Title - bottom right
+            const titleX = screen.width - 'RECTANGLES DEMO'.length * 8 - 10;
+            const titleY = screen.height - 30;
+            Fixm.drawText('RECTANGLES DEMO', titleX, titleY, 0xFFFFFF);
         }
         
         function updateSprite() {
+            const screen = Fixm.getScreenSize();
             Fixm.clear(0x000044);
             
             // Get and display image info
@@ -259,15 +279,26 @@
                 Fixm.drawText(`SIZE: ${imageInfo.width}X${imageInfo.height}`, 10, 10, 0xFFFF00);
             }
             
-            // Draw the test sprite multiple times
-            for (let i = 0; i < 8; i++) {
-                Fixm.blitSub(0, 0, 15, 15, 50 + i * 20, 50 + i * 10, 'test');
+            // Draw the test sprite multiple times - distributed across screen
+            const spriteCount = 8;
+            const spacing = Math.floor(screen.width / (spriteCount + 1));
+            const startY = Math.floor(screen.height * 0.3);
+            
+            for (let i = 0; i < spriteCount; i++) {
+                const x = spacing * (i + 1) - 8; // Center sprites
+                const y = startY + i * 10;
+                Fixm.blitSub(0, 0, 15, 15, x, y, 'test');
             }
             
-            Fixm.drawText('SPRITE DEMO', 200, 180, 0xFFFFFF);
+            // Title - bottom right
+            const titleX = screen.width - 'SPRITE DEMO'.length * 8 - 10;
+            const titleY = screen.height - 30;
+            Fixm.drawText('SPRITE DEMO', titleX, titleY, 0xFFFFFF);
         }
         
         function updateAnimate() {
+            const screen = Fixm.getScreenSize();
+            
             // Clear with animated background color
             const bgColor = Math.floor(Math.sin(frame * 0.02) * 32 + 32);
             Fixm.clear(bgColor << 16 | bgColor << 8 | bgColor * 2);
@@ -277,28 +308,36 @@
             const spriteW = imageInfo ? imageInfo.width : 8;
             const spriteH = imageInfo ? imageInfo.height : 8;
             
-            // Animated rectangles
+            // Animated rectangles - scale movement based on screen size
+            const centerX = screen.width / 2;
+            const centerY = screen.height / 2;
+            const moveRangeX = screen.width * 0.3;
+            const moveRangeY = screen.height * 0.3;
+            
             for (let i = 0; i < 5; i++) {
-                const x = Math.sin(frame * 0.03 + i) * 100 + 160;
-                const y = Math.cos(frame * 0.04 + i * 0.5) * 80 + 120;
+                const x = Math.sin(frame * 0.03 + i) * moveRangeX + centerX;
+                const y = Math.cos(frame * 0.04 + i * 0.5) * moveRangeY + centerY;
                 const color = ((frame + i * 50) % 255) << ((i % 3) * 8);
                 Fixm.drawRect(Math.floor(x), Math.floor(y), 20, 20, color);
             }
             
-            // Animated sprites using actual sprite dimensions
-            const spriteX = Math.sin(frame * 0.05) * 140 + 160;
-            const spriteY = Math.cos(frame * 0.03) * 100 + 120;
+            // Animated sprites using actual sprite dimensions - scale movement
+            const spriteX = Math.sin(frame * 0.05) * moveRangeX + centerX;
+            const spriteY = Math.cos(frame * 0.03) * moveRangeY + centerY;
             Fixm.blitSub(0, 0, spriteW, spriteH, Math.floor(spriteX), Math.floor(spriteY), 'test');
             
-            // Show sprite info
+            // Show sprite info - bottom left
             if (imageInfo) {
-                Fixm.drawText(`SPRITE: ${spriteW}X${spriteH}`, 10, 220, 0x00FFFF);
+                Fixm.drawText(`SPRITE: ${spriteW}X${spriteH}`, 10, screen.height - 20, 0x00FFFF);
             }
             
-            Fixm.drawText('ANIMATION DEMO', 190, 20, 0xFFFFFF);
+            // Title - top right
+            const titleX = screen.width - 'ANIMATION DEMO'.length * 8 - 10;
+            Fixm.drawText('ANIMATION DEMO', titleX, 20, 0xFFFFFF);
         }
         
         function updateInput() {
+            const screen = Fixm.getScreenSize();
             const gamepad = Fixm.getGamepad(0);
             
             // Move player based on input
@@ -307,9 +346,9 @@
             if (gamepad & Fixm.BUTTON_UP) playerY -= 2;
             if (gamepad & Fixm.BUTTON_DOWN) playerY += 2;
             
-            // Keep player in bounds
-            playerX = Math.max(0, Math.min(playerX, 300));
-            playerY = Math.max(0, Math.min(playerY, 220));
+            // Keep player in bounds - use screen size
+            playerX = Math.max(0, Math.min(playerX, screen.width - 20));
+            playerY = Math.max(0, Math.min(playerY, screen.height - 20));
             
             // Clear screen
             Fixm.clear(0x001122);
@@ -317,18 +356,28 @@
             // Draw player
             Fixm.drawRect(playerX, playerY, 20, 20, 0xFFFFFF);
             
-            // Draw button indicators
-            if (gamepad & Fixm.BUTTON_A) Fixm.drawRect(10, 10, 30, 20, 0xFF0000);
-            if (gamepad & Fixm.BUTTON_B) Fixm.drawRect(50, 10, 30, 20, 0x00FF00);
-            if (gamepad & Fixm.BUTTON_X) Fixm.drawRect(90, 10, 30, 20, 0x0000FF);
-            if (gamepad & Fixm.BUTTON_Y) Fixm.drawRect(130, 10, 30, 20, 0xFFFF00);
+            // Draw button indicators - top of screen, evenly spaced
+            const buttonWidth = 30;
+            const buttonHeight = 20;
+            const buttonSpacing = 10;
+            const totalButtonWidth = (buttonWidth + buttonSpacing) * 4 - buttonSpacing;
+            const buttonStartX = Math.floor((screen.width - totalButtonWidth) / 2);
             
-            Fixm.drawText('INPUT DEMO', 200, 200, 0xFFFFFF);
-            Fixm.drawText('MOVE WITH WASD ARROWS', 140, 215, 0xCCCCCC);
+            if (gamepad & Fixm.BUTTON_A) Fixm.drawRect(buttonStartX, 10, buttonWidth, buttonHeight, 0xFF0000);
+            if (gamepad & Fixm.BUTTON_B) Fixm.drawRect(buttonStartX + (buttonWidth + buttonSpacing), 10, buttonWidth, buttonHeight, 0x00FF00);
+            if (gamepad & Fixm.BUTTON_X) Fixm.drawRect(buttonStartX + (buttonWidth + buttonSpacing) * 2, 10, buttonWidth, buttonHeight, 0x0000FF);
+            if (gamepad & Fixm.BUTTON_Y) Fixm.drawRect(buttonStartX + (buttonWidth + buttonSpacing) * 3, 10, buttonWidth, buttonHeight, 0xFFFF00);
+            
+            // Title and instructions - bottom of screen, centered
+            const titleX = Math.floor((screen.width - 'INPUT DEMO'.length * 8) / 2);
+            const instructX = Math.floor((screen.width - 'MOVE WITH WASD ARROWS'.length * 8) / 2);
+            Fixm.drawText('INPUT DEMO', titleX, screen.height - 40, 0xFFFFFF);
+            Fixm.drawText('MOVE WITH WASD ARROWS', instructX, screen.height - 25, 0xCCCCCC);
         }
         
         
         function updateAudio() {
+            const screen = Fixm.getScreenSize();
             Fixm.clear(0x001122);
             
             // Start audio sequence when entering audio demo
@@ -353,18 +402,24 @@
                 lastBeat = beat;
             }
             
-            // Visual display
-            Fixm.drawText('AUDIO DEMO', 200, 20, 0xFFFFFF);
-            Fixm.drawText(`TIME: ${songTime.toFixed(1)}S`, 10, 50, 0x00FFFF);
-            Fixm.drawText(`BEAT: ${beat}`, 10, 65, 0x00FF00);
-            Fixm.drawText(`MEASURE: ${measure}`, 10, 80, 0xFFFF00);
+            // Visual display - title centered at top
+            const titleX = Math.floor((screen.width - 'AUDIO DEMO'.length * 8) / 2);
+            Fixm.drawText('AUDIO DEMO', titleX, 20, 0xFFFFFF);
             
-            // Channel activity indicators
+            // Timing info - left side
+            const infoStartY = 50;
+            Fixm.drawText(`TIME: ${songTime.toFixed(1)}S`, 10, infoStartY, 0x00FFFF);
+            Fixm.drawText(`BEAT: ${beat}`, 10, infoStartY + 15, 0x00FF00);
+            Fixm.drawText(`MEASURE: ${measure}`, 10, infoStartY + 30, 0xFFFF00);
+            
+            // Channel activity indicators - centered
             const channels = ['BASS', 'MELODY', 'HARMONY', 'PERCUSSION'];
+            const channelStartY = Math.floor(screen.height * 0.35);
+            
             for (let i = 0; i < 4; i++) {
                 const active = isChannelActive(i, beat);
                 const color = active ? 0xFF0000 : 0x444444;
-                const y = 110 + i * 15;
+                const y = channelStartY + i * 15;
                 
                 let channelText = `CH${i}: ${channels[i]}`;
                 
@@ -378,22 +433,25 @@
                 
                 Fixm.drawText(channelText, 10, y, color);
                 
-                // Visual bars for active channels
+                // Visual bars for active channels - scale with screen width
                 if (active) {
-                    const barWidth = Math.floor(Math.sin(frame * 0.2 + i) * 20 + 40);
-                    Fixm.drawRect(120, y - 2, barWidth, 10, color);
+                    const maxBarWidth = Math.floor(screen.width * 0.3);
+                    const barWidth = Math.floor(Math.sin(frame * 0.2 + i) * (maxBarWidth * 0.5) + (maxBarWidth * 0.5));
+                    const barX = Math.floor(screen.width * 0.35);
+                    Fixm.drawRect(barX, y - 2, barWidth, 10, color);
                 }
             }
             
-            // Song structure visualization
-            const structureY = 190;
+            // Song structure visualization - bottom section
+            const structureY = screen.height - 60;
             Fixm.drawText('SONG STRUCTURE:', 10, structureY, 0xCCCCCC);
             const sections = ['INTRO', 'VERSE', 'CHORUS', 'VERSE', 'CHORUS', 'OUTRO'];
             const currentSection = Math.min(Math.floor(measure / 4), sections.length - 1);
             
+            const sectionSpacing = Math.floor((screen.width - 20) / sections.length);
             for (let i = 0; i < sections.length; i++) {
                 const color = i === currentSection ? 0xFFFF00 : 0x666666;
-                const x = 10 + i * 45;
+                const x = 10 + i * sectionSpacing;
                 Fixm.drawText(sections[i].substring(0, 4), x, structureY + 15, color);
             }
             
@@ -506,6 +564,7 @@
         }
         
         function updateConfig() {
+            const screen = Fixm.getScreenSize();
             Fixm.clear(0x002211);
             
             // Handle input for config menu
@@ -535,10 +594,11 @@
                 }
             }
             
-            // Title
-            Fixm.drawText('FIXM CONFIGURATION', 170, 20, 0xFFFFFF);
+            // Title - centered
+            const titleX = Math.floor((screen.width - 'FIXM CONFIGURATION'.length * 8) / 2);
+            Fixm.drawText('FIXM CONFIGURATION', titleX, 20, 0xFFFFFF);
             
-            // Config options
+            // Config options - centered layout
             const configItems = [
                 { name: 'WIDTH', value: configCurrentWidth },
                 { name: 'HEIGHT', value: configCurrentHeight },
@@ -550,40 +610,52 @@
                 { name: 'APPLY CONFIG', value: '' }
             ];
             
+            const menuStartY = Math.floor(screen.height * 0.25);
+            const labelX = Math.floor(screen.width * 0.2);
+            const valueX = Math.floor(screen.width * 0.5);
+            const controlsX = Math.floor(screen.width * 0.7);
+            
             for (let i = 0; i < configItems.length; i++) {
-                const y = 60 + i * 18;
+                const y = menuStartY + i * 18;
                 const isSelected = i === configSelectedItem;
                 const color = isSelected ? 0xFFFF00 : 0xCCCCCC;
                 
                 if (i === 6) continue; // Skip separator line
                 
                 if (isSelected) {
-                    Fixm.drawText('>', 30, y, 0xFFFF00);
+                    Fixm.drawText('>', labelX - 20, y, 0xFFFF00);
                 }
                 
                 if (i === 7) {
-                    // Apply button
+                    // Apply button - centered
                     const buttonColor = isSelected ? 0x00FF00 : 0x888888;
-                    Fixm.drawText(configItems[i].name, 50, y, buttonColor);
+                    const buttonX = Math.floor((screen.width - configItems[i].name.length * 8) / 2);
+                    Fixm.drawText(configItems[i].name, buttonX, y, buttonColor);
                 } else {
                     // Regular config item
-                    Fixm.drawText(configItems[i].name + ':', 50, y, color);
-                    Fixm.drawText(configItems[i].value.toString(), 140, y, color);
+                    Fixm.drawText(configItems[i].name + ':', labelX, y, color);
+                    Fixm.drawText(configItems[i].value.toString(), valueX, y, color);
                     
                     if (isSelected && i < 6) {
-                        Fixm.drawText('< >', 200, y, 0xFF8800);
+                        Fixm.drawText('< >', controlsX, y, 0xFF8800);
                     }
                 }
             }
             
-            // Instructions
-            Fixm.drawText('UP DOWN: SELECT ITEM', 20, 180, 0x888888);
-            Fixm.drawText('LEFT RIGHT: CHANGE VALUE', 20, 195, 0x888888);
-            Fixm.drawText('A: APPLY  X Y: BACK TO MENU', 20, 210, 0x888888);
+            // Instructions - bottom of screen, centered
+            const instructStartY = screen.height - 60;
+            const instruct1X = Math.floor((screen.width - 'UP DOWN: SELECT ITEM'.length * 8) / 2);
+            const instruct2X = Math.floor((screen.width - 'LEFT RIGHT: CHANGE VALUE'.length * 8) / 2);
+            const instruct3X = Math.floor((screen.width - 'A: APPLY  X Y: BACK TO MENU'.length * 8) / 2);
             
-            // Current settings display
-            Fixm.drawText('CURRENT SETTINGS:', 20, 230, 0x666666);
-            Fixm.drawText(`${Fixm.width}X${Fixm.height} ${Fixm.mode.toUpperCase()}`, 160, 230, 0x666666);
+            Fixm.drawText('UP DOWN: SELECT ITEM', instruct1X, instructStartY, 0x888888);
+            Fixm.drawText('LEFT RIGHT: CHANGE VALUE', instruct2X, instructStartY + 15, 0x888888);
+            Fixm.drawText('A: APPLY  X Y: BACK TO MENU', instruct3X, instructStartY + 30, 0x888888);
+            
+            // Current settings display - very bottom
+            const currentText = `CURRENT: ${Fixm.width}X${Fixm.height} ${Fixm.mode.toUpperCase()}`;
+            const currentX = Math.floor((screen.width - currentText.length * 8) / 2);
+            Fixm.drawText(currentText, currentX, screen.height - 10, 0x666666);
         }
         
         function adjustConfigValue(direction) {

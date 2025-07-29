@@ -702,6 +702,14 @@
         };
     };
 
+    // Get current screen dimensions (internal resolution)
+    Fixm.getScreenSize = function() {
+        return {
+            width: this.width,
+            height: this.height
+        };
+    };
+
     // Font and text rendering system
     Fixm.setupFont = function() {
         // Default 8x8 bitmap font (each character is 8 bytes, 1 bit per pixel)
